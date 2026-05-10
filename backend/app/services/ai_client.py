@@ -1,56 +1,66 @@
-import google.generativeai as genai
-from app.config import settings
+import os
+from groq import AsyncGroq
 
-# Configure Gemini once on import
-genai.configure(api_key=settings.GEMINI_API_KEY)
+client = AsyncGroq(api_key=os.environ.get("GROQ_API_KEY"))
 
-# Use flash model — fastest free tier available
-model = genai.GenerativeModel(
-    model_name=settings.GEMINI_MODEL,
-    generation_config={
-        "temperature": 0.3,       # Low temp = more consistent clinical responses
-        "top_p": 0.9,
-        "top_k": 40,
-        "max_output_tokens": 512, # Keep responses short and fast
-    },
-    safety_settings=[
-        {"category": "HARM_CATEGORY_HARASSMENT",        "threshold": "BLOCK_NONE"},
-        {"category": "HARM_CATEGORY_HATE_SPEECH",       "threshold": "BLOCK_NONE"},
-        {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-        {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
-    ]
-)
+GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
 
 
 async def ask_gemini(prompt: str, system_context: str = "") -> str:
     """
-    Send a prompt to Gemini and return the response text.
-    Used by all three agents — triage, medscan, records.
+    Drop-in replacement for the original ask_gemini.
+    Used by triage_agent and medscan_agent.
+    Sends a single prompt and returns the AI response.
     """
     try:
-        full_prompt = f"{system_context}\n\n{prompt}" if system_context else prompt
-        response = model.generate_content(full_prompt)
-        return response.text.strip()
+        messages = []
+        if system_context:
+            messages.append({"role": "system", "content": system_context})
+        messages.append({"role": "user", "content": prompt})
+
+        response = await client.chat.completions.create(
+            model=GROQ_MODEL,
+            messages=messages,
+            max_tokens=512,
+            temperature=0.3,
+        )
+        return response.choices[0].message.content.strip()
+
     except Exception as e:
-        print(f"Gemini error: {e}")
+        print(f"Groq error: {e}")
         return "I am having trouble processing that right now. Please try again."
 
 
 async def ask_gemini_with_history(messages: list, system_context: str = "") -> str:
     """
-    Send a full conversation history to Gemini.
+    Drop-in replacement for the original ask_gemini_with_history.
     Used by the orchestrator to maintain conversation context.
 
-    messages format:
+    Accepts Gemini-style messages:
     [{"role": "user", "parts": ["..."]}, {"role": "model", "parts": ["..."]}]
+    Converts them to Groq/OpenAI format automatically.
     """
     try:
-        chat = model.start_chat(history=messages[:-1])  # All but last message is history
-        last_message = messages[-1]["parts"][0]
+        groq_messages = []
+
         if system_context:
-            last_message = f"{system_context}\n\n{last_message}"
-        response = chat.send_message(last_message)
-        return response.text.strip()
+            groq_messages.append({"role": "system", "content": system_context})
+
+        for msg in messages:
+            # Convert Gemini "model" role to "assistant", keep "user" as is
+            role = "assistant" if msg["role"] == "model" else msg["role"]
+            # Gemini uses "parts" list, Groq uses "content" string
+            content = msg["parts"][0] if isinstance(msg.get("parts"), list) else msg.get("content", "")
+            groq_messages.append({"role": role, "content": content})
+
+        response = await client.chat.completions.create(
+            model=GROQ_MODEL,
+            messages=groq_messages,
+            max_tokens=300,
+            temperature=0.4,
+        )
+        return response.choices[0].message.content.strip()
+
     except Exception as e:
-        print(f"Gemini chat error: {e}")
+        print(f"Groq chat error: {e}")
         return "I am having trouble processing that right now. Please try again."
