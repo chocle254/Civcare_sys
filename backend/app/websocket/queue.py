@@ -1,10 +1,10 @@
 from fastapi import WebSocket, WebSocketDisconnect
-from typing import dict
+from typing import Dict
 import json
 
 # Stores active WebSocket connections per hospital
 # { hospital_id: [websocket1, websocket2, ...] }
-active_connections: dict[str, list[WebSocket]] = {}
+active_connections: Dict[str, list[WebSocket]] = {}
 
 
 async def connect(websocket: WebSocket, hospital_id: str):
