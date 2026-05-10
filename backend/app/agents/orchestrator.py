@@ -1,6 +1,6 @@
 import json
 from datetime import datetime
-from app.services.ai_client import ask_groq_with_history
+from app.services.ai_client import ask_gemini_with_history
 from app.agents.triage_agent  import run_triage_agent
 from app.agents.medscan_agent import run_medscan_agent
 
@@ -140,7 +140,7 @@ async def process_message(
     })
 
     # ── STEP 3: Get AI response ──
-    ai_response = await ask_groq_with_history(
+    ai_response = await ask_gemini_with_history(
         messages=groq_history,
         system_context=SYSTEM_CONTEXT,
     )
