@@ -39,7 +39,7 @@ export default function Chat() {
       role:    'ai',
       content: `Hello ${patient.name || 'there'}. I am CivTech, your health assistant. How are you feeling today? Please describe what is bothering you.`,
     }]);
-  }, []);
+  }, [patient.name]);
 
   // ── Auto scroll ──
   useEffect(() => {
