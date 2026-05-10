@@ -34,5 +34,5 @@ export default function useWebSocket(hospitalId, onMessage) {
     return () => {
       ws.current?.close();
     };
-  }, [hospitalId]);
+  }, [hospitalId, onMessage]);
 }
