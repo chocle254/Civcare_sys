@@ -1,30 +1,47 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { sendMessage } from '../../api/triage';
-import { getNearbyHospitals } from '../../api/hospitals';
+import { sendMessage, selectHospital } from '../../api/triage';
 
 export default function Chat() {
   const navigate  = useNavigate();
   const patient   = JSON.parse(localStorage.getItem('civtech_patient') || '{}');
   const bottomRef = useRef(null);
 
-  const [messages,   setMessages]   = useState([]);
-  const [input,      setInput]      = useState('');
-  const [sessionId,  setSessionId]  = useState(null);
-  const [isTyping,   setIsTyping]   = useState(false);  // 3-dot waiting state
-  const [hospitals,  setHospitals]  = useState([]);
-  const [action,     setAction]     = useState('continue');
-  const [disabled,   setDisabled]   = useState(false);
+  const [messages,  setMessages]  = useState([]);
+  const [input,     setInput]     = useState('');
+  const [sessionId, setSessionId] = useState(null);
+  const [isTyping,  setIsTyping]  = useState(false);
+  const [disabled,  setDisabled]  = useState(false);
+  const [coords,    setCoords]    = useState(null); // Patient GPS coords
 
-  // Opening message from AI on load
+  // ── Get patient location on mount (silent — no UI shown) ──
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setCoords({
+            lat: pos.coords.latitude,
+            lon: pos.coords.longitude,
+          });
+        },
+        () => {
+          // Permission denied — hospital routing will show manual option
+          console.log('Location permission denied');
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    }
+  }, []);
+
+  // ── Opening message ──
   useEffect(() => {
     setMessages([{
       role:    'ai',
       content: `Hello ${patient.name || 'there'}. I am CivTech, your health assistant. How are you feeling today? Please describe what is bothering you.`,
     }]);
-  }, [patient.name]);
+  }, []);
 
-  // Auto scroll to bottom on new message
+  // ── Auto scroll ──
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
@@ -35,46 +52,52 @@ export default function Chat() {
     const userMessage = input.trim();
     setInput('');
 
-    // Add patient message immediately
     setMessages((prev) => [...prev, { role: 'patient', content: userMessage }]);
-
-    // Show 3-dot typing indicator
     setIsTyping(true);
 
     try {
       const res = await sendMessage({
-        patient_id: patient.id,
-        session_id: sessionId,
-        message:    userMessage,
+        patient_id:  patient.id,
+        session_id:  sessionId,
+        message:     userMessage,
+        patient_lat: coords?.lat || null,
+        patient_lon: coords?.lon || null,
       });
 
       const data = res.data;
       setSessionId(data.session_id);
-      setAction(data.action);
 
-      // Small artificial delay so typing indicator feels natural
       await new Promise((r) => setTimeout(r, 600));
-
-      // Remove typing indicator and add AI response
       setIsTyping(false);
+
+      // Add AI response bubble
       setMessages((prev) => [...prev, { role: 'ai', content: data.response }]);
 
-      // Handle routing actions
+      // ── Route to hospital — show hospital cards in chat ──
       if (data.action === 'route_hospital') {
         setDisabled(true);
-        // Get nearby hospitals
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(async (pos) => {
-            const { latitude, longitude } = pos.coords;
-            const hospRes = await getNearbyHospitals(latitude, longitude);
-            setHospitals(hospRes.data);
-          });
-        }
+        setTimeout(() => {
+          if (data.hospitals && data.hospitals.length > 0) {
+            // Show hospital cards directly in chat
+            setMessages((prev) => [...prev, {
+              role:      'action',
+              content:   'hospital',
+              hospitals: data.hospitals,
+              sessionId: data.session_id,
+            }]);
+          } else {
+            // No coords or no hospitals found — show button to hospital page
+            setMessages((prev) => [...prev, {
+              role:    'action',
+              content: 'hospital_fallback',
+            }]);
+          }
+        }, 800);
       }
 
+      // ── Route to consultation ──
       if (data.action === 'route_consultation') {
         setDisabled(true);
-        // Show medication check or go to consultation
         setTimeout(() => {
           setMessages((prev) => [...prev, {
             role:    'action',
@@ -83,13 +106,12 @@ export default function Chat() {
         }, 800);
       }
 
-      // Show MedScan result if triggered
+      // ── MedScan result ──
       if (data.medscan_result) {
-        const med = data.medscan_result;
         setTimeout(() => {
           setMessages((prev) => [...prev, {
             role:    'medscan',
-            content: med,
+            content: data.medscan_result,
           }]);
         }, 500);
       }
@@ -110,9 +132,25 @@ export default function Chat() {
     }
   };
 
-  const handleHospitalSelect = (hospital) => {
-    localStorage.setItem('civtech_hospital',    JSON.stringify(hospital));
-    localStorage.setItem('civtech_session_id',  sessionId);
+  // ── Patient taps a hospital card ──
+  const handleHospitalSelect = async (hospital, sid) => {
+    try {
+      await selectHospital({
+        session_id:    sid || sessionId,
+        patient_id:    patient.id,
+        hospital_id:   hospital.id,
+        hospital_name: hospital.name,
+        hospital_lat:  hospital.lat,
+        hospital_lon:  hospital.lon,
+        distance_km:   hospital.distance_km,
+      });
+    } catch (e) {
+      console.error('Failed to record hospital:', e);
+    }
+
+    // Save to localStorage for arrival page
+    localStorage.setItem('civtech_hospital',   JSON.stringify(hospital));
+    localStorage.setItem('civtech_session_id', sid || sessionId);
     navigate('/arrival');
   };
 
@@ -150,22 +188,17 @@ export default function Chat() {
               );
             }
 
-            // ── Hospital cards rendered inside chat ──
-            if (msg.role === 'ai' && hospitals.length > 0 && i === messages.length - 1) {
-              return null; // Hospitals shown below
-            }
-
-            // ── MedScan result card inside chat ──
+            // ── MedScan result card ──
             if (msg.role === 'medscan') {
               const med = msg.content;
               return (
                 <div key={i} style={{
-                  background: med.clash_detected ? '#fde8e8' : '#d4edda',
-                  border:     `1px solid ${med.clash_detected ? '#f5c6c6' : '#c3e6cb'}`,
+                  background:   med.clash_detected ? '#fde8e8' : '#d4edda',
+                  border:       `1px solid ${med.clash_detected ? '#f5c6c6' : '#c3e6cb'}`,
                   borderRadius: 'var(--radius)',
-                  padding: 14,
-                  alignSelf: 'flex-start',
-                  maxWidth: '85%',
+                  padding:      14,
+                  alignSelf:    'flex-start',
+                  maxWidth:     '92%',
                 }}>
                   <p style={{ fontWeight: 700, fontSize: 14, marginBottom: 6 }}>
                     {med.clash_detected ? '⚠️ Medication Warning' : '✅ Medication Check'}
@@ -175,19 +208,108 @@ export default function Chat() {
               );
             }
 
+            // ── Hospital cards rendered in chat ──
+            if (msg.role === 'action' && msg.content === 'hospital') {
+              return (
+                <div key={i} style={{ alignSelf: 'flex-start', width: '95%' }}>
+                  <p style={{
+                    fontSize:     13,
+                    fontWeight:   600,
+                    color:        'var(--gray-600)',
+                    marginBottom: 10,
+                  }}>
+                    🏥 Hospitals near you — tap one to select:
+                  </p>
+
+                  {msg.hospitals.map((h) => (
+                    <div
+                      key={h.id}
+                      onClick={() => handleHospitalSelect(h, msg.sessionId)}
+                      style={{
+                        background:    'var(--white)',
+                        border:        '1px solid var(--blue)',
+                        borderRadius:  'var(--radius)',
+                        padding:       '12px 14px',
+                        marginBottom:  8,
+                        cursor:        'pointer',
+                        display:       'flex',
+                        justifyContent:'space-between',
+                        alignItems:    'center',
+                      }}
+                    >
+                      <div>
+                        <p style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>
+                          {h.name}
+                        </p>
+                        <p style={{ fontSize: 12, color: 'var(--gray-600)' }}>
+                          {h.town}{h.county ? `, ${h.county}` : ''}
+                        </p>
+                        {h.phone && (
+                          <p style={{ fontSize: 12, color: 'var(--gray-400)', marginTop: 2 }}>
+                            📞 {h.phone}
+                          </p>
+                        )}
+                      </div>
+                      <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 10 }}>
+                        <p style={{ fontWeight: 700, color: 'var(--blue)', fontSize: 14 }}>
+                          {h.distance_km} km
+                        </p>
+                        <p style={{ fontSize: 11, color: 'var(--gray-400)' }}>
+                          ⏱ {h.travel_time}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            }
+
+            // ── Hospital fallback (no location / no results) ──
+            if (msg.role === 'action' && msg.content === 'hospital_fallback') {
+              return (
+                <div key={i} style={{
+                  background:   'var(--blue-light)',
+                  border:       '1px solid var(--blue)',
+                  borderRadius: 'var(--radius)',
+                  padding:      14,
+                  alignSelf:    'flex-start',
+                  maxWidth:     '85%',
+                }}>
+                  <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 4, color: 'var(--blue-dark)' }}>
+                    🏥 Find a Hospital Near You
+                  </p>
+                  <p style={{ fontSize: 13, color: 'var(--gray-600)', marginBottom: 10 }}>
+                    We need your location to show nearby hospitals.
+                  </p>
+                  <button
+                    className="btn btn--primary btn--sm"
+                    onClick={() => {
+                      localStorage.setItem('civtech_session_id', sessionId);
+                      navigate('/hospitals');
+                    }}
+                  >
+                    Find Hospitals →
+                  </button>
+                </div>
+              );
+            }
+
             // ── Consultation action card ──
             if (msg.role === 'action' && msg.content === 'consultation') {
               return (
                 <div key={i} style={{
-                  background: 'var(--blue-light)',
-                  border: '1px solid var(--blue)',
+                  background:   'var(--blue-light)',
+                  border:       '1px solid var(--blue)',
                   borderRadius: 'var(--radius)',
-                  padding: 14,
-                  alignSelf: 'flex-start',
-                  maxWidth: '85%',
+                  padding:      14,
+                  alignSelf:    'flex-start',
+                  maxWidth:     '85%',
                 }}>
-                  <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10, color: 'var(--blue-dark)' }}>
-                    Would you like to speak to a doctor right now?
+                  <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 4, color: 'var(--blue-dark)' }}>
+                    👨‍⚕️ Speak to a Doctor Online
+                  </p>
+                  <p style={{ fontSize: 13, color: 'var(--gray-600)', marginBottom: 10 }}>
+                    A doctor is available to consult with you right now from wherever you are.
                   </p>
                   <button
                     className="btn btn--primary btn--sm"
@@ -196,7 +318,7 @@ export default function Chat() {
                       navigate('/consultation');
                     }}
                   >
-                    See Available Doctors
+                    See Available Doctors →
                   </button>
                 </div>
               );
@@ -205,34 +327,12 @@ export default function Chat() {
             return null;
           })}
 
-          {/* ── 3-dot Typing Indicator (WhatsApp / IG style) ── */}
+          {/* ── 3-dot Typing Indicator ── */}
           {isTyping && (
             <div className="typing">
               <div className="typing__dot" />
               <div className="typing__dot" />
               <div className="typing__dot" />
-            </div>
-          )}
-
-          {/* ── Hospital cards after routing ── */}
-          {action === 'route_hospital' && hospitals.length > 0 && (
-            <div style={{ alignSelf: 'flex-start', width: '90%' }}>
-              <p style={{ fontSize: 13, color: 'var(--gray-600)', marginBottom: 8 }}>
-                Select a hospital near you:
-              </p>
-              {hospitals.map((h) => (
-                <div
-                  key={h.id}
-                  className="hospital-card"
-                  onClick={() => handleHospitalSelect(h)}
-                >
-                  <div className="hospital-card__name">{h.name}</div>
-                  <div className="hospital-card__meta">{h.town}, {h.county}</div>
-                  <div className="hospital-card__dist">
-                    📍 {h.distance_km} km away · {h.travel_time}
-                  </div>
-                </div>
-              ))}
             </div>
           )}
 
