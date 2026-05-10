@@ -1,5 +1,6 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from app.database import create_tables, SessionLocal
 from app.config import settings
@@ -28,11 +29,23 @@ app = FastAPI(
 # ── CORS ──
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.FRONTEND_URL, "http://localhost:3000"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ── PREFLIGHT HANDLER ──
+@app.options("/{rest_of_path:path}")
+async def preflight_handler(rest_of_path: str, request: Request):
+    return JSONResponse(
+        content={},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
+            "Access-Control-Allow-Headers": "*",
+        }
+    )
 
 # ── STARTUP ──
 @app.on_event("startup")
@@ -172,4 +185,3 @@ app.include_router(reminders.router,     prefix="/reminders",    tags=["Reminder
 app.include_router(verdict.router,       prefix="/verdict",      tags=["Verdict"])
 app.include_router(ussd.router,          prefix="/ussd",         tags=["USSD"])
 app.include_router(sms.router,           prefix="/sms",          tags=["SMS"])
-
