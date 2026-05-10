@@ -21,7 +21,7 @@ export default function Medications() {
       }
     };
     load();
-  }, []);
+  }, [patient.id]);
 
   const handleChange = (id, field, value) => {
     setMeds((prev) => prev.map((m) => m.id === id ? { ...m, [field]: value } : m));
