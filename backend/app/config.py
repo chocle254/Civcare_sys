@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     # ── APP ──
     APP_NAME: str = "CivTech Care System"
     DEBUG: bool = True
-    FRONTEND_URL: str = "http://localhost:3000"
+    FRONTEND_URL: str = "https://civcare-sys.vercel.app/"
 
     class Config:
         env_file = ".env"
