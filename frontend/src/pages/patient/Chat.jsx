@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { sendMessage, selectHospital } from '../../api/triage';
+import { sendMessage, selectHospital, createAppointment } from '../../api/triage';
 
 export default function Chat() {
   const navigate  = useNavigate();
@@ -134,9 +134,12 @@ export default function Chat() {
 
   // ── Patient taps a hospital card ──
   const handleHospitalSelect = async (hospital, sid) => {
+    const currentSessionId = sid || sessionId;
+
+    // 1 — Record hospital choice against the session
     try {
       await selectHospital({
-        session_id:    sid || sessionId,
+        session_id:    currentSessionId,
         patient_id:    patient.id,
         hospital_id:   hospital.id,
         hospital_name: hospital.name,
@@ -148,9 +151,21 @@ export default function Chat() {
       console.error('Failed to record hospital:', e);
     }
 
-    // Save to localStorage for arrival page
+    // 2 — Create the appointment so it appears on the doctor's dashboard
+    try {
+      const res = await createAppointment({
+        patient_id:  patient.id,
+        session_id:  currentSessionId,
+        hospital_id: hospital.id,
+      });
+      localStorage.setItem('civtech_appointment_id', res.data.appointment_id);
+    } catch (e) {
+      console.error('Failed to create appointment:', e);
+    }
+
+    // 3 — Save hospital and navigate to arrival confirmation
     localStorage.setItem('civtech_hospital',   JSON.stringify(hospital));
-    localStorage.setItem('civtech_session_id', sid || sessionId);
+    localStorage.setItem('civtech_session_id', currentSessionId);
     navigate('/arrival');
   };
 
