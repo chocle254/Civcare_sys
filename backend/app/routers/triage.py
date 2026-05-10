@@ -9,6 +9,7 @@ from app.models.doctor import Doctor, DoctorStatus
 from app.models.patient import Patient
 from app.agents.orchestrator import process_message
 from app.services.africastalking import send_doctor_call_notification
+from app.routers.hospitals import get_nearby_hospitals
 import json
 import pytz
 
@@ -18,11 +19,11 @@ NAIROBI_TZ = pytz.timezone("Africa/Nairobi")
 
 
 class MessageInput(BaseModel):
-    patient_id:       str
-    session_id:       str | None = None
-    message:          str
-    patient_lat:      float | None = None
-    patient_lon:      float | None = None
+    patient_id:  str
+    session_id:  str | None = None
+    message:     str
+    patient_lat: float | None = None
+    patient_lon: float | None = None
 
 
 class ArrivalConfirm(BaseModel):
@@ -35,6 +36,16 @@ class CallPatient(BaseModel):
     doctor_id:      str
 
 
+class SelectHospital(BaseModel):
+    session_id:   str
+    patient_id:   str
+    hospital_id:  str
+    hospital_name: str
+    hospital_lat: float | None = None
+    hospital_lon: float | None = None
+    distance_km:  float | None = None
+
+
 # ── START OR CONTINUE CONVERSATION ──
 @router.post("/message")
 async def send_message(data: MessageInput, db: Session = Depends(get_db)):
@@ -42,7 +53,7 @@ async def send_message(data: MessageInput, db: Session = Depends(get_db)):
     Main endpoint for the AI conversation.
     Creates a session if new, continues if existing.
     Returns AI response + any routing actions.
-    Frontend shows 3-dot loading state while this is processing.
+    When action is route_hospital, fetches nearby hospitals from OpenStreetMap.
     """
     patient = db.query(Patient).filter(Patient.id == data.patient_id).first()
     if not patient:
@@ -70,7 +81,7 @@ async def send_message(data: MessageInput, db: Session = Depends(get_db)):
     # ── Build patient data for agents ──
     patient_data = {
         "age":                 patient.age or "Unknown",
-        "conditions":          "None on record",  # Will come from encrypted records in full build
+        "conditions":          "None on record",
         "current_medications": [],
         "allergies":           "None on record",
     }
@@ -96,8 +107,8 @@ async def send_message(data: MessageInput, db: Session = Depends(get_db)):
     )
 
     # ── Save messages ──
-    messages.append({"role": "patient",  "content": data.message})
-    messages.append({"role": "ai",       "content": result["response"]})
+    messages.append({"role": "patient", "content": data.message})
+    messages.append({"role": "ai",      "content": result["response"]})
     session.messages = json.dumps(messages)
 
     # ── Save triage score if generated ──
@@ -113,13 +124,50 @@ async def send_message(data: MessageInput, db: Session = Depends(get_db)):
 
     db.commit()
 
+    # ── Fetch nearby hospitals from OpenStreetMap if routing to hospital ──
+    nearby_hospitals = []
+    if result["action"] == "route_hospital" and data.patient_lat and data.patient_lon:
+        try:
+            nearby_hospitals = await get_nearby_hospitals(
+                lat=data.patient_lat,
+                lon=data.patient_lon,
+            )
+        except Exception as e:
+            print(f"Hospital fetch error: {e}")
+            nearby_hospitals = []
+
     return {
         "session_id":     session.id,
         "response":       result["response"],
         "action":         result["action"],
         "medscan_result": result.get("medscan_result"),
         "triage_score":   result.get("triage_score"),
+        "hospitals":      nearby_hospitals,  # Empty list if no routing or no coords
     }
+
+
+# ── PATIENT SELECTS A HOSPITAL ──
+@router.post("/select-hospital")
+async def select_hospital(data: SelectHospital, db: Session = Depends(get_db)):
+    """
+    Called when patient taps a hospital card in the chat.
+    Records the chosen hospital against the session for the doctor's dashboard.
+    """
+    session = db.query(ChatSession).filter(ChatSession.id == data.session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found.")
+
+    # Save hospital choice to session as JSON
+    session.chosen_hospital = json.dumps({
+        "id":           data.hospital_id,
+        "name":         data.hospital_name,
+        "lat":          data.hospital_lat,
+        "lon":          data.hospital_lon,
+        "distance_km":  data.distance_km,
+    })
+    db.commit()
+
+    return {"message": "Hospital recorded.", "hospital_name": data.hospital_name}
 
 
 # ── PATIENT CONFIRMS HOSPITAL ARRIVAL ──
@@ -150,7 +198,6 @@ async def call_patient(data: CallPatient, db: Session = Depends(get_db)):
     """
     Doctor clicks the Call button on their dashboard.
     Sends SMS notification to patient and marks doctor as busy.
-    Patient just gets called to the office — no complexity shown.
     """
     appointment = db.query(Appointment).filter(
         Appointment.id == data.appointment_id
@@ -159,18 +206,14 @@ async def call_patient(data: CallPatient, db: Session = Depends(get_db)):
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found.")
 
-    doctor = db.query(Doctor).filter(Doctor.id == data.doctor_id).first()
+    doctor  = db.query(Doctor).filter(Doctor.id == data.doctor_id).first()
     patient = db.query(Patient).filter(Patient.id == appointment.patient_id).first()
 
-    # Update appointment status
-    appointment.status   = AppointmentStatus.CALLED
+    appointment.status    = AppointmentStatus.CALLED
     appointment.called_at = datetime.utcnow()
-
-    # Doctor is now busy
-    doctor.status = DoctorStatus.WITH_PATIENT
+    doctor.status         = DoctorStatus.WITH_PATIENT
     db.commit()
 
-    # Notify patient via SMS
     await send_doctor_call_notification(patient.phone_number, doctor.full_name)
 
     return {"message": f"Patient {patient.full_name} has been notified."}
