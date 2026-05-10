@@ -13,8 +13,15 @@ export default function HospitalSelect() {
   const [selected,  setSelected]        = useState(null);
   const [error,     setError]           = useState('');
 
-  // Try to get location on mount
-  useEffect(() => { getLocation(); }, []);
+  // 1. Wrap the function in useCallback
+const getLocation = useCallback(() => {
+  // your existing logic...
+}, []); // add dependencies for getLocation here if it has any
+
+// 2. Now you can safely add it to useEffect
+useEffect(() => {
+  getLocation();
+}, [getLocation]); // No more warning!
 
   // Fetch hospitals once we have coords
   useEffect(() => {
