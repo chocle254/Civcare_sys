@@ -1,5 +1,9 @@
 import client from './client';
 
-export const registerPatient  = (data)  => client.post('/auth/patient/register', data);
-export const verifyPatientOTP = (data)  => client.post('/auth/patient/verify', data);
-export const doctorLogin      = (data)  => client.post('/auth/doctor/login', data);
+// Patient
+export const registerPatient = (data) => client.post('/auth/patient/register', data);
+export const loginPatient    = (data) => client.post('/auth/patient/login', data);
+
+// Doctor
+export const registerDoctor  = (data) => client.post('/auth/doctor/register', data);
+export const loginDoctor     = (data) => client.post('/auth/doctor/login', data);
