@@ -4,26 +4,25 @@ import { getNearbyHospitals } from '../../api/hospitals';
 import useLocation from '../../hooks/useLocation';
 
 export default function HospitalSelect() {
-  const navigate                        = useNavigate();
-  const { coords, error: locError,
-          loading: locLoading,
-          getLocation }                 = useLocation();
-  const [hospitals, setHospitals]       = useState([]);
-  const [loading,   setLoading]         = useState(false);
-  const [selected,  setSelected]        = useState(null);
-  const [error,     setError]           = useState('');
+  const navigate = useNavigate();
+  
+  // This is where getLocation is first created!
+  const { coords, error: locError, 
+          loading: locLoading, 
+          getLocation } = useLocation();
 
-  // 1. Wrap the function in useCallback
-const getLocation = useCallback(() => {
-  // your existing logic...
-}, []); // add dependencies for getLocation here if it has any
+  const [hospitals, setHospitals] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [selected, setSelected] = useState(null);
+  const [error, setError] = useState('');
 
-// 2. Now you can safely add it to useEffect
-useEffect(() => {
-  getLocation();
-}, [getLocation]); // No more warning!
+  // 1. Trigger the location hook
+  useEffect(() => {
+    getLocation();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Fetch hospitals once we have coords
+  // 2. Fetch hospitals once we have coords
   useEffect(() => {
     if (!coords) return;
     const load = async () => {
@@ -40,6 +39,7 @@ useEffect(() => {
     };
     load();
   }, [coords]);
+  
 
   const handleSelect = (hospital) => setSelected(hospital);
 
