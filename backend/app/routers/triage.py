@@ -37,13 +37,19 @@ class CallPatient(BaseModel):
 
 
 class SelectHospital(BaseModel):
-    session_id:   str
-    patient_id:   str
-    hospital_id:  str
+    session_id:    str
+    patient_id:    str
+    hospital_id:   str
     hospital_name: str
-    hospital_lat: float | None = None
-    hospital_lon: float | None = None
-    distance_km:  float | None = None
+    hospital_lat:  float | None = None
+    hospital_lon:  float | None = None
+    distance_km:   float | None = None
+
+
+class CreateAppointment(BaseModel):
+    patient_id:  str
+    session_id:  str
+    hospital_id: str
 
 
 # ── START OR CONTINUE CONVERSATION ──
@@ -168,6 +174,51 @@ async def select_hospital(data: SelectHospital, db: Session = Depends(get_db)):
     db.commit()
 
     return {"message": "Hospital recorded.", "hospital_name": data.hospital_name}
+
+
+# ── CREATE APPOINTMENT WHEN PATIENT SELECTS HOSPITAL ──
+@router.post("/create-appointment")
+async def create_appointment(data: CreateAppointment, db: Session = Depends(get_db)):
+    """
+    Called immediately when patient taps a hospital card.
+    Creates the appointment row so the doctor's queue can receive it.
+    Returns appointment_id which is saved to localStorage for arrival confirmation.
+    """
+    # Pull triage data from the session to attach to the appointment
+    session = db.query(ChatSession).filter(ChatSession.id == data.session_id).first()
+
+    risk_score   = None
+    risk_numeric = None
+    symptoms_summary = None
+
+    if session:
+        risk_score       = getattr(session, "risk_score", None)
+        symptoms_summary = session.ai_assessment if hasattr(session, "ai_assessment") else None
+
+    # Find an available doctor at this hospital
+    doctor = db.query(Doctor).filter(
+        Doctor.hospital_id == data.hospital_id,
+        Doctor.status      == DoctorStatus.AVAILABLE,
+    ).first()
+
+    appointment = Appointment(
+        patient_id       = data.patient_id,
+        hospital_id      = data.hospital_id,
+        session_id       = data.session_id,
+        doctor_id        = doctor.id if doctor else None,
+        status           = AppointmentStatus.PENDING,
+        risk_score       = risk_score,
+        risk_numeric     = risk_numeric,
+        symptoms_summary = symptoms_summary,
+    )
+    db.add(appointment)
+    db.commit()
+    db.refresh(appointment)
+
+    return {
+        "appointment_id": appointment.id,
+        "doctor_assigned": doctor.full_name if doctor else None,
+    }
 
 
 # ── PATIENT CONFIRMS HOSPITAL ARRIVAL ──
