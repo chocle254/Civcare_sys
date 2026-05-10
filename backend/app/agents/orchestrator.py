@@ -1,6 +1,6 @@
 import json
 from datetime import datetime
-from app.services.ai_client import ask_gemini_with_history
+from app.services.ai_client import ask_groq_with_history
 from app.agents.triage_agent  import run_triage_agent
 from app.agents.medscan_agent import run_medscan_agent
 
@@ -123,30 +123,30 @@ async def process_message(
             )
             return result
 
-    # ── STEP 2: Build conversation history for Gemini ──
-    gemini_history = []
+    # ── STEP 2: Build conversation history for Groq ──
+    # Groq uses OpenAI-compatible format: "user" / "assistant"
+    groq_history = []
     for msg in conversation_history:
-        role = "user" if msg["role"] == "patient" else "model"
-        gemini_history.append({
-            "role":  role,
-            "parts": [msg["content"]],
+        role = "user" if msg["role"] == "patient" else "assistant"
+        groq_history.append({
+            "role":    role,
+            "content": msg["content"],
         })
 
     # Add current patient message
-    gemini_history.append({
-        "role":  "user",
-        "parts": [patient_message],
+    groq_history.append({
+        "role":    "user",
+        "content": patient_message,
     })
 
     # ── STEP 3: Get AI response ──
-    ai_response = await ask_gemini_with_history(
-        messages=gemini_history,
+    ai_response = await ask_groq_with_history(
+        messages=groq_history,
         system_context=SYSTEM_CONTEXT,
     )
     result["response"] = ai_response
 
     # ── STEP 4: Update conversation summary ──
-    # Simple keyword extraction — full NLP done by triage agent
     text_lower = patient_message.lower()
 
     if not conversation_summary.get("symptom"):
