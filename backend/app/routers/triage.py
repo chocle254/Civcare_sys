@@ -268,3 +268,8 @@ async def call_patient(data: CallPatient, db: Session = Depends(get_db)):
     await send_doctor_call_notification(patient.phone_number, doctor.full_name)
 
     return {"message": f"Patient {patient.full_name} has been notified."}
+
+
+@router.get("/sessions/{patient_id}")
+async def get_patient_sessions(patient_id: str, db: Session = Depends(get_db)):
+    ...
