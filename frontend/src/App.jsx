@@ -14,6 +14,9 @@ import Verdict        from './pages/doctor/Verdict';
 import RateAI         from './pages/doctor/RateAI';
 import ActiveConsult  from './pages/doctor/ActiveConsult';
 import './index.css';
+import SessionDashboard from './pages/patient/SessionDashboard';
+
+
 
 export default function App() {
   return (
@@ -28,7 +31,7 @@ export default function App() {
         <Route path="/consultation"        element={<Consultation />} />
         <Route path="/payment"             element={<Payment />} />
         <Route path="/rate"                element={<RateExperience />} />
-
+        <Route path="/dashboard"           element={<SessionDashboard />} />
         {/* Doctor */}
         <Route path="/doctor"              element={<DoctorLogin />} />
         <Route path="/doctor/dashboard"    element={<Dashboard />} />
