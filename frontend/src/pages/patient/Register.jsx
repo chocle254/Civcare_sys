@@ -31,7 +31,7 @@ export default function Register() {
   const saveAndNavigate = (data) => {
     localStorage.setItem('civtech_token',   data.access_token);
     localStorage.setItem('civtech_patient', JSON.stringify(data.patient));
-    navigate('/chat');
+    navigate('/dashboard');
   };
 
   const handleLogin = async () => {
