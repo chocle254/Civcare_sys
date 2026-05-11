@@ -23,7 +23,7 @@ export default function SessionDashboard() {
   useEffect(() => {
     if (!patient.id) { navigate('/login'); return; }
     fetchSessions();
-  }, []);
+  }, [fetchSessions, navigate, patient.id]);
 
   const fetchSessions = async () => {
     try {
