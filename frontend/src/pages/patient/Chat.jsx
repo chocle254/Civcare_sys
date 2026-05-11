@@ -41,7 +41,7 @@ export default function Chat() {
         content: `Hello ${patient.name?.split(' ')[0] || 'there'}. I am CivTech, your health assistant. How are you feeling today?`,
       }]);
     }
-  }, []);
+  }, [patient.name]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
