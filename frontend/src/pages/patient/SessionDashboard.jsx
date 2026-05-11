@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
@@ -20,21 +20,20 @@ export default function SessionDashboard() {
 
   const firstName = (patient.name || 'there').split(' ')[0].toUpperCase();
 
+  const fetchSessions = useCallback(async () => {
+  try {
+    const res = await axios.get(`${API}/triage/sessions/${patient.id}`);
+    setSessions(res.data);
+  } catch (e) {
+    console.error('Failed to load sessions:', e);
+  } finally {
+    setLoading(false);
+  }
+}, [patient.id]);
   useEffect(() => {
-    if (!patient.id) { navigate('/login'); return; }
+    if (!patient.id) { navigate('/'); return; }
     fetchSessions();
   }, [fetchSessions, navigate, patient.id]);
-
-  const fetchSessions = async () => {
-    try {
-      const res = await axios.get(`${API}/triage/sessions/${patient.id}`);
-      setSessions(res.data);
-    } catch (e) {
-      console.error('Failed to load sessions:', e);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleLogout = () => {
     setLoggingOut(true);
