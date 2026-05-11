@@ -20,7 +20,7 @@ export default function OTPVerify() {
       const res = await verifyPatientOTP({ phone_number: phone, otp_code: otp });
       localStorage.setItem('civtech_token',   res.data.access_token);
       localStorage.setItem('civtech_patient', JSON.stringify(res.data.patient));
-      navigate('/chat');
+      navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.detail || 'Invalid or expired OTP.');
     } finally {
