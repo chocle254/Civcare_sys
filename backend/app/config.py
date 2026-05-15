@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = ""               # From Google AI Studio → Get API Key (free)
     GROQ_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-1.5-flash"   # Fast free model
-    GROQ_MODEL: str = "llama-3.3-70b-versatile"
+    GROQ_MODEL: str = "llama-3.1-8b-instant"
 
     # ── MPESA ──
     MPESA_CONSUMER_KEY: str = ""

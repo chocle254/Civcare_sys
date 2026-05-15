@@ -13,7 +13,7 @@ router = APIRouter()
 
 
 class PrescriptionItem(BaseModel):
-    medication_name: str
+    name: str
     notes:           str | None = None
 
 
@@ -63,7 +63,7 @@ async def submit_verdict(data: VerdictSubmit, db: Session = Depends(get_db)):
             patient_id=data.patient_id,
             doctor_id=data.doctor_id,
             verdict_id=verdict.id,
-            medication_name=rx.medication_name,
+            medication_name=rx.name,
             notes=rx.notes,
             is_active=True,
         )

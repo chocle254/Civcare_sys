@@ -3,19 +3,19 @@ import { useNavigate, useParams } from 'react-router-dom';
 import client from '../../api/client';
 
 export default function Verdict() {
-  const { id }   = useParams();   // appointment id
+  const { id } = useParams();   // appointment id
   const navigate = useNavigate();
-  const doctor   = JSON.parse(localStorage.getItem('civtech_doctor') || '{}');
+  const doctor = JSON.parse(localStorage.getItem('civtech_doctor') || '{}');
 
-  const [diagnosis,  setDiagnosis]  = useState('');
-  const [severity,   setSeverity]   = useState('moderate');
-  const [notes,      setNotes]      = useState('');
-  const [meds,       setMeds]       = useState([{ name: '', notes: '' }]);
-  const [aiRating,   setAiRating]   = useState(0);
-  const [aiHover,    setAiHover]    = useState(0);
-  const [aiComment,  setAiComment]  = useState('');
-  const [loading,    setLoading]    = useState(false);
-  const [error,      setError]      = useState('');
+  const [diagnosis, setDiagnosis] = useState('');
+  const [severity, setSeverity] = useState('moderate');
+  const [notes, setNotes] = useState('');
+  const [meds, setMeds] = useState([{ name: '', notes: '' }]);
+  const [aiRating, setAiRating] = useState(0);
+  const [aiHover, setAiHover] = useState(0);
+  const [aiComment, setAiComment] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const addMed = () => setMeds([...meds, { name: '', notes: '' }]);
 
@@ -33,22 +33,31 @@ export default function Verdict() {
       setError('Please rate the AI triage accuracy before submitting.');
       return;
     }
+
+    // ADD THIS 👇
+    const patientId = localStorage.getItem('civtech_viewing_patient');
+    if (!patientId) {
+      setError('Patient session lost. Please go back and reopen the appointment.');
+      return;
+    }
+
     setLoading(true);
     setError('');
     try {
       await client.post('/verdict/submit', {
-        doctor_id:          doctor.id,
-        patient_id:         localStorage.getItem('civtech_viewing_patient'),
-        appointment_id:     id,
+        doctor_id: doctor.id,
+        patient_id: patientId,   // ← use the validated variable
+        appointment_id: id,
         diagnosis,
         severity,
         notes,
-        prescriptions:      meds.filter((m) => m.name.trim()),
+        prescriptions: meds.filter((m) => m.name.trim()),
         ai_accuracy_rating: aiRating,
-        ai_rating_comment:  aiComment,
+        ai_rating_comment: aiComment,
       });
       navigate('/doctor/dashboard');
-    } catch {
+    } catch (err) {
+      console.error('422 details:', err.response?.data);
       setError('Could not submit verdict. Please try again.');
     } finally {
       setLoading(false);

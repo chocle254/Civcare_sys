@@ -169,6 +169,7 @@ async def get_appointment(appointment_id: str, doctor_id: str):
 
         return {
             "appointment_id":    appt.id,
+            "patient_id":        appt.patient_id,
             "patient_name":      patient.full_name if patient else "Unknown",
             "patient_phone":     patient.phone_number if patient else "—",
             "patient_age":       patient.age if patient else "—",

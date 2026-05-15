@@ -3,7 +3,7 @@ from groq import AsyncGroq
 
 client = AsyncGroq(api_key=os.environ.get("GROQ_API_KEY"))
 
-GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.1-8b-instant")
 
 
 async def ask_gemini(prompt: str, system_context: str = "") -> str:

@@ -4,9 +4,9 @@ import { updateDoctorStatus } from '../../api/doctors';
 import client from '../../api/client';
 
 export default function PatientProfile() {
-  const { id }   = useParams();   // appointment id
+  const { id } = useParams();   // appointment id
   const navigate = useNavigate();
-  const doctor   = JSON.parse(localStorage.getItem('civtech_doctor') || '{}');
+  const doctor = JSON.parse(localStorage.getItem('civtech_doctor') || '{}');
 
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -16,6 +16,7 @@ export default function PatientProfile() {
       try {
         const res = await client.get(`/triage/appointment/${id}?doctor_id=${doctor.id}`);
         setProfile(res.data);
+        console.log('Profile data:', res.data); // ADD THIS
         // Doctor opened profile — auto switch to with_patient
         await updateDoctorStatus({ doctor_id: doctor.id, status: 'with_patient' });
       } catch {
@@ -48,9 +49,9 @@ export default function PatientProfile() {
     </div>
   );
 
-  const risk      = profile.risk_score || 'moderate';
-  const badgeCls  = { critical: 'badge--critical', moderate: 'badge--moderate', low: 'badge--low' };
-  const messages  = profile.conversation || [];
+  const risk = profile.risk_score || 'moderate';
+  const badgeCls = { critical: 'badge--critical', moderate: 'badge--moderate', low: 'badge--low' };
+  const messages = profile.conversation || [];
 
   return (
     <div className="page">
@@ -75,12 +76,12 @@ export default function PatientProfile() {
           <p className="card__title">Patient Identity</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             {[
-              ['Full Name',    profile.patient_name],
-              ['Age',          profile.patient_age || '—'],
-              ['Phone',        profile.patient_phone],
-              ['Location',     profile.patient_location || '—'],
-              ['ID Type',      profile.identity_type],
-              ['ID Number',    profile.identity_number],
+              ['Full Name', profile.patient_name],
+              ['Age', profile.patient_age || '—'],
+              ['Phone', profile.patient_phone],
+              ['Location', profile.patient_location || '—'],
+              ['ID Type', profile.identity_type],
+              ['ID Number', profile.identity_number],
             ].map(([label, value]) => (
               <div key={label}>
                 <p style={{ fontSize: 12, color: 'var(--gray-400)', marginBottom: 2 }}>{label}</p>
@@ -148,7 +149,7 @@ export default function PatientProfile() {
                 style={{
                   alignSelf: msg.role === 'patient' ? 'flex-end' : 'flex-start',
                   background: msg.role === 'patient' ? 'var(--blue)' : 'var(--white)',
-                  color:      msg.role === 'patient' ? 'white' : 'var(--text)',
+                  color: msg.role === 'patient' ? 'white' : 'var(--text)',
                   borderRadius: 12,
                   padding: '8px 12px',
                   maxWidth: '80%',
@@ -204,7 +205,15 @@ export default function PatientProfile() {
         <div style={{ display: 'flex', gap: 10, marginBottom: 24 }}>
           <button
             className="btn btn--primary"
-            onClick={() => navigate(`/doctor/verdict/${id}`)}
+            onClick={() => {
+              const pid = profile.patient_id;
+              if (!pid) {
+                alert('Cannot proceed: patient ID missing from profile data. Contact support.');
+                return;
+              }
+              localStorage.setItem('civtech_viewing_patient', pid);
+              navigate(`/doctor/verdict/${id}`);
+            }}
           >
             Submit Diagnosis & Prescriptions
           </button>
