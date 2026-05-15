@@ -21,8 +21,8 @@ async def ask_gemini(prompt: str, system_context: str = "") -> str:
         response = await client.chat.completions.create(
             model=GROQ_MODEL,
             messages=messages,
-            max_tokens=512,
-            temperature=0.3,
+            max_tokens=800,
+            temperature=0.2,
         )
         return response.choices[0].message.content.strip()
 
@@ -56,8 +56,8 @@ async def ask_gemini_with_history(messages: list, system_context: str = "") -> s
         response = await client.chat.completions.create(
             model=GROQ_MODEL,
             messages=groq_messages,
-            max_tokens=300,
-            temperature=0.4,
+            max_tokens=400,
+            temperature=0.3,
         )
         return response.choices[0].message.content.strip()
 

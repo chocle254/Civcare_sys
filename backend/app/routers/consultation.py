@@ -15,8 +15,8 @@ class ConsultInit(BaseModel):
     patient_id:    str
     doctor_id:     str
     session_id:    str | None = None
-    payment_ref:   str
-    payment_method:str
+    payment_ref:    str | None = "DEMO-REF" 
+    payment_method:str = "mpesa"
     fee_amount:    float
 
 
@@ -72,11 +72,14 @@ async def initiate_consultation(data: ConsultInit, db: Session = Depends(get_db)
     db.refresh(consult)
 
     # Notify doctor via SMS to call patient
-    await send_consultation_request(
-        doctor_phone=doctor.phone_number,
-        patient_name=patient.full_name,
-        patient_phone=patient.phone_number,
-    )
+    try:
+        await send_consultation_request(
+            doctor_phone=doctor.phone_number,
+            patient_name=patient.full_name,
+            patient_phone=patient.phone_number,
+        )
+    except Exception:
+        pass
 
     return {
         "consultation_id": consult.id,
@@ -84,6 +87,42 @@ async def initiate_consultation(data: ConsultInit, db: Session = Depends(get_db)
         "auto_release_at": auto_release_at,
     }
 
+@router.get("/pending")
+async def get_pending_consultations(doctor_id: str, db: Session = Depends(get_db)):
+    """Doctor dashboard polls this for the Consultations tab."""
+    consultations = db.query(Consultation).filter(
+        Consultation.doctor_id == doctor_id,
+        Consultation.status.in_([
+            ConsultationStatus.PENDING,
+            ConsultationStatus.IN_PROGRESS,
+        ])
+    ).order_by(Consultation.created_at.desc()).all()
+
+    result = []
+    for c in consultations:
+        patient = db.query(Patient).filter(Patient.id == c.patient_id).first()
+
+        # Pull symptoms from triage session if available
+        symptoms = "Direct consultation request"
+        if c.session_id:
+            from app.models.session import ChatSession
+            session = db.query(ChatSession).filter(ChatSession.id == c.session_id).first()
+            if session and session.ai_assessment:
+                symptoms = session.ai_assessment[:150]
+
+        result.append({
+            "id":               c.id,
+            "patient_name":     patient.full_name    if patient else "Unknown",
+            "patient_phone":    patient.phone_number if patient else "—",
+            "patient_id":       c.patient_id,
+            "status":           c.status,
+            "fee_amount":       c.fee_amount,
+            "payment_status":   c.payment_status,
+            "symptoms_summary": symptoms,
+            "started":          c.created_at.isoformat(),
+        })
+
+    return result
 
 @router.get("/{consultation_id}")
 async def get_consultation(consultation_id: str, db: Session = Depends(get_db)):
@@ -96,6 +135,33 @@ async def get_consultation(consultation_id: str, db: Session = Depends(get_db)):
 
     patient = db.query(Patient).filter(Patient.id == consult.patient_id).first()
 
+    # Pull symptoms and AI assessment from triage session if available
+    symptoms = "Direct consultation request"
+    if consult.session_id:
+        from app.models.session import ChatSession
+        session = db.query(ChatSession).filter(ChatSession.id == consult.session_id).first()
+        if session:
+            symptoms = f"RISK: {str(session.risk_score).upper()}\n\n"
+            if session.ai_assessment:
+                symptoms += session.ai_assessment
+            elif session.symptoms_summary:
+                symptoms += session.symptoms_summary
+            else:
+                symptoms += "No AI assessment recorded."
+
+    from app.models.verdict import Verdict
+    from app.models.prescription import Prescription
+    
+    past_verdicts = db.query(Verdict).filter(Verdict.patient_id == patient.id).all()
+    diagnoses = list(set([v.diagnosis for v in past_verdicts if v.diagnosis]))
+    conditions_str = ", ".join(diagnoses) if diagnoses else "None on record"
+    
+    active_prescriptions = db.query(Prescription).filter(
+        Prescription.patient_id == patient.id,
+        Prescription.is_active == True
+    ).all()
+    medications = [p.medication_name for p in active_prescriptions]
+
     return {
         "id":               consult.id,
         "patient_name":     patient.full_name if patient else "Unknown",
@@ -105,9 +171,10 @@ async def get_consultation(consultation_id: str, db: Session = Depends(get_db)):
         "status":           consult.status,
         "clash_detected":   False,
         "clash_details":    "",
-        "current_medications": [],
+        "current_medications": medications,
         "allergies":        "None on record",
-        "symptoms_summary": "See session record",
+        "conditions":       conditions_str,
+        "symptoms_summary": symptoms,
     }
 
 

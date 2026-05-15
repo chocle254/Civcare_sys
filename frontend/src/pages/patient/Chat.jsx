@@ -1,11 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { sendMessage, selectHospital, createAppointment } from '../../api/triage';
 
 export default function Chat() {
   const navigate  = useNavigate();
+  const location  = useLocation();
   const patient   = JSON.parse(localStorage.getItem('civtech_patient') || '{}');
   const bottomRef = useRef(null);
+
+  const mode = location.state?.mode || null;
 
   const [messages,   setMessages]   = useState([]);
   const [input,      setInput]      = useState('');
@@ -36,9 +39,18 @@ export default function Chat() {
         content: `Welcome back ${patient.name?.split(' ')[0] || ''}. I have full context of our previous conversation. What would you like to discuss today?`,
       }]);
     } else {
+      let welcomeMsg = `Hello ${patient.name?.split(' ')[0] || 'there'}. I am CivTech, your health assistant. How are you feeling today?`;
+      if (mode === 'pre_hospital') {
+        const h = JSON.parse(localStorage.getItem('civtech_hospital') || '{}');
+        welcomeMsg = `You've selected ${h.name}. To prepare your file for the doctor, please describe the symptoms you are experiencing.`;
+      } else if (mode === 'pre_consultation') {
+        const d = JSON.parse(localStorage.getItem('civtech_selected_doctor') || '{}');
+        welcomeMsg = `You're about to consult Dr. ${d.full_name || d.name}. Please describe your symptoms to speed up the consultation.`;
+      }
+      
       setMessages([{
         role: 'ai',
-        content: `Hello ${patient.name?.split(' ')[0] || 'there'}. I am CivTech, your health assistant. How are you feeling today?`,
+        content: welcomeMsg,
       }]);
     }
   }, [patient.name]);
@@ -61,9 +73,11 @@ export default function Chat() {
         message:     userMessage,
         patient_lat: coords?.lat || null,
         patient_lon: coords?.lon || null,
+        mode:        mode,
       });
       const data = res.data;
       setSessionId(data.session_id);
+      localStorage.setItem('civtech_session_id', data.session_id);
 
       // Update verdict title when triage score arrives
       if (data.triage_score) {
@@ -81,21 +95,49 @@ export default function Chat() {
 
       if (data.action === 'route_hospital') {
         setDisabled(true);
-        setTimeout(() => {
-          setMessages((prev) => [...prev, {
-            role:      'action',
-            content:   data.hospitals?.length > 0 ? 'hospital' : 'hospital_fallback',
-            hospitals: data.hospitals || [],
-            sessionId: data.session_id,
-          }]);
-        }, 800);
+        if (mode === 'pre_hospital') {
+          setTimeout(() => navigate('/arrival'), 1500);
+        } else {
+          setTimeout(() => {
+            setMessages((prev) => [...prev, {
+              role:      'action',
+              content:   'route_hospital_card',
+              sessionId: data.session_id,
+            }]);
+          }, 800);
+        }
       }
 
       if (data.action === 'route_consultation') {
         setDisabled(true);
-        setTimeout(() => {
-          setMessages((prev) => [...prev, { role: 'action', content: 'consultation' }]);
-        }, 800);
+        if (mode === 'pre_consultation') {
+          // Fast-track to consultation initiate
+          setTimeout(async () => {
+             const d = JSON.parse(localStorage.getItem('civtech_selected_doctor') || '{}');
+             if (!d.id) return navigate('/consultation');
+             
+             import('axios').then(async (axios) => {
+               try {
+                 const initRes = await axios.default.post(`${process.env.REACT_APP_API_URL}/consultation/initiate`, {
+                    patient_id:     patient.id,
+                    doctor_id:      d.id,
+                    session_id:     data.session_id,
+                    payment_method: 'mpesa',
+                    fee_amount:     d.consultation_fee,
+                 });
+                 localStorage.setItem('civtech_consultation_id', initRes.data.consultation_id);
+                 navigate('/consultation/waiting');
+               } catch (e) {
+                 alert('Failed to connect to doctor. Please try again.');
+                 navigate('/consultation');
+               }
+             });
+          }, 1500);
+        } else {
+          setTimeout(() => {
+            setMessages((prev) => [...prev, { role: 'action', content: 'consultation' }]);
+          }, 800);
+        }
       }
 
       if (data.medscan_result) {
@@ -115,19 +157,7 @@ export default function Chat() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
 
-  const handleHospitalSelect = async (hospital, sid) => {
-    const currentSid = sid || sessionId;
-    try {
-      await selectHospital({ session_id: currentSid, patient_id: patient.id, hospital_id: hospital.id, hospital_name: hospital.name, hospital_lat: hospital.lat, hospital_lon: hospital.lon, distance_km: hospital.distance_km });
-    } catch {}
-    try {
-      const res = await createAppointment({ patient_id: patient.id, session_id: currentSid, hospital_id: hospital.id });
-      localStorage.setItem('civtech_appointment_id', res.data.appointment_id);
-    } catch {}
-    localStorage.setItem('civtech_hospital', JSON.stringify(hospital));
-    localStorage.setItem('civtech_session_id', currentSid);
-    navigate('/arrival');
-  };
+  // Hospital Selection is now handled entirely on the /hospitals map page
 
   return (
     <div style={s.page}>
@@ -177,36 +207,15 @@ export default function Chat() {
             );
           }
 
-          if (msg.role === 'action' && msg.content === 'hospital') {
-            return (
-              <div key={i} style={{ ...s.rowLeft, flexDirection: 'column', alignItems: 'flex-start' }}>
-                <div style={s.aiBadge}>🏥</div>
-                <p style={s.actionLabel}>Hospitals near you — tap to select:</p>
-                {msg.hospitals.map((h) => (
-                  <div key={h.id} style={s.hospitalRow} onClick={() => handleHospitalSelect(h, msg.sessionId)}>
-                    <div style={s.hospitalIcon}>+</div>
-                    <div style={s.hospitalInfo}>
-                      <p style={s.hospitalName}>{h.name}</p>
-                      <p style={s.hospitalMeta}>{h.town}{h.county ? `, ${h.county}` : ''}</p>
-                    </div>
-                    <div style={s.hospitalDist}>
-                      <p style={s.distKm}>{h.distance_km}km</p>
-                      <p style={s.distTime}>{h.travel_time}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            );
-          }
-
-          if (msg.role === 'action' && msg.content === 'hospital_fallback') {
+          if (msg.role === 'action' && (msg.content === 'hospital' || msg.content === 'hospital_fallback' || msg.content === 'route_hospital_card')) {
             return (
               <div key={i} style={s.rowLeft}>
                 <div style={s.aiBadge}>🏥</div>
                 <div style={s.bubbleAi}>
-                  <p style={{ fontSize: 13, marginBottom: 10 }}>We need your location to show nearby hospitals.</p>
-                  <button style={s.actionBtn} onClick={() => { localStorage.setItem('civtech_session_id', sessionId); navigate('/hospitals'); }}>
-                    Find Hospitals →
+                  <p style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>Hospital Care Recommended</p>
+                  <p style={{ fontSize: 13, marginBottom: 10, opacity: 0.7 }}>We recommend visiting a hospital for further evaluation.</p>
+                  <button style={s.actionBtn} onClick={() => { localStorage.setItem('civtech_session_id', sessionId || msg.sessionId); navigate('/hospitals'); }}>
+                    Find Hospitals on Map →
                   </button>
                 </div>
               </div>

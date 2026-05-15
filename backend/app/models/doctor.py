@@ -23,6 +23,7 @@ class Doctor(Base):
     full_name          = Column(String, nullable=False)
     email              = Column(String, unique=True, nullable=False, index=True)
     phone_number       = Column(String, unique=True, nullable=False)
+    national_id        = Column(String, unique=True, nullable=True)  # Temporarily nullable for existing data
 
     # ── PROFESSIONAL ──
     kmpdb_license      = Column(String, unique=True, nullable=False)  # Kenya Medical Practitioners Board license

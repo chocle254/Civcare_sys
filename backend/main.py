@@ -1,3 +1,5 @@
+from dotenv import load_dotenv
+load_dotenv()
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -10,12 +12,13 @@ from app.websocket.queue import connect, disconnect, broadcast_queue_update
 from app.services.scheduler import start_scheduler
 import json
 
+
 # ── ROUTERS ──
 from app.routers import (
     auth, triage, hospitals, doctors,
     records, medscan, consultation,
     payment, reminders, verdict,
-    ussd, sms
+    ussd, sms, prescriptions
 )
 
 app = FastAPI(
@@ -150,6 +153,20 @@ async def get_appointment(appointment_id: str, doctor_id: str):
 
         messages = json.loads(session.messages or "[]") if session else []
 
+        # Fetch medical history
+        from app.models.verdict import Verdict
+        from app.models.prescription import Prescription
+        
+        past_verdicts = db.query(Verdict).filter(Verdict.patient_id == patient.id).all()
+        diagnoses = list(set([v.diagnosis for v in past_verdicts if v.diagnosis]))
+        conditions_str = ", ".join(diagnoses) if diagnoses else "None on record"
+        
+        active_prescriptions = db.query(Prescription).filter(
+            Prescription.patient_id == patient.id,
+            Prescription.is_active == True
+        ).all()
+        medications = [p.medication_name for p in active_prescriptions]
+
         return {
             "appointment_id":    appt.id,
             "patient_name":      patient.full_name if patient else "Unknown",
@@ -163,9 +180,9 @@ async def get_appointment(appointment_id: str, doctor_id: str):
             "ai_assessment":     session.ai_assessment if session else "",
             "ai_confidence":     session.ai_confidence if session else "—",
             "conversation":      messages,
-            "conditions":        "None on record",
+            "conditions":        conditions_str,
             "allergies":         "None on record",
-            "current_medications": [],
+            "current_medications": medications,
             "symptoms_summary":  appt.symptoms_summary or "—",
         }
     finally:
@@ -185,3 +202,4 @@ app.include_router(reminders.router,     prefix="/reminders",    tags=["Reminder
 app.include_router(verdict.router,       prefix="/verdict",      tags=["Verdict"])
 app.include_router(ussd.router,          prefix="/ussd",         tags=["USSD"])
 app.include_router(sms.router,           prefix="/sms",          tags=["SMS"])
+app.include_router(prescriptions.router, prefix="/prescriptions",tags=["Prescriptions"])

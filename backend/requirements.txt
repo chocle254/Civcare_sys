@@ -38,6 +38,7 @@ pytz==2024.1
 
 # ── UTILITIES ──
 python-dotenv==1.0.1
+dotenv==0.20.0
 
 # ── TESTING ──
 pytest==8.1.1

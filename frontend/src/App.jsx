@@ -1,3 +1,4 @@
+// CivCare v2.1 — $10k UI Build
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Register       from './pages/patient/Register';
 import Chat           from './pages/patient/Chat';
@@ -15,6 +16,7 @@ import RateAI         from './pages/doctor/RateAI';
 import ActiveConsult  from './pages/doctor/ActiveConsult';
 import './index.css';
 import SessionDashboard from './pages/patient/SessionDashboard';
+import ConsultationWaiting from './pages/patient/ConsultationWaiting';
 
 
 
@@ -32,6 +34,7 @@ export default function App() {
         <Route path="/payment"             element={<Payment />} />
         <Route path="/rate"                element={<RateExperience />} />
         <Route path="/dashboard"           element={<SessionDashboard />} />
+        <Route path="/consultation/waiting" element={<ConsultationWaiting />} />
         {/* Doctor */}
         <Route path="/doctor"              element={<DoctorLogin />} />
         <Route path="/doctor/dashboard"    element={<Dashboard />} />

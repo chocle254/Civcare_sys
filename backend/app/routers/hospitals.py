@@ -33,8 +33,26 @@ def estimate_travel_time(distance_km: float) -> str:
         return f"{hours:.1f} hr"
 
 
+# ── KNH TESTING OVERRIDE ──────────────────────────────────────────────────
+# Always injected at the top of the list for testing purposes.
+KNH_OVERRIDE = {
+    "id":           "knh-nairobi-testing",
+    "name":         "Kenyatta National Hospital (KNH)",
+    "town":         "Nairobi",
+    "county":       "Nairobi County",
+    "phone":        "+254 20 2726300",
+    "address":      "Hospital Road, Upper Hill, Nairobi",
+    "distance_km":  0.0,   # Will be recalculated dynamically
+    "travel_time":  "varies",
+    "lat":          -1.3019,
+    "lon":          36.8068,
+    "source":       "civtech_testing",
+    "is_testing":   True,
+}
+
+
 @router.get("/nearby")
-async def get_nearby_hospitals(lat: float, lon: float, radius_km: int = 10):
+async def get_nearby_hospitals(lat: float, lon: float, radius_km: int = 50):
     """
     Queries OpenStreetMap Overpass API for hospitals near the patient.
     Returns a sorted list by distance with name, distance, and travel time.
@@ -61,7 +79,7 @@ async def get_nearby_hospitals(lat: float, lon: float, radius_km: int = 10):
             data = res.json()
     except Exception as e:
         print(f"Overpass API error: {e}")
-        raise HTTPException(status_code=503, detail="Could not reach map service. Please try again.")
+        data = {"elements": []}
 
     hospitals = []
     seen_names = set()
@@ -105,5 +123,13 @@ async def get_nearby_hospitals(lat: float, lon: float, radius_km: int = 10):
     # Sort by nearest first
     hospitals.sort(key=lambda h: h["distance_km"])
 
-    # Return top 8 closest
-    return hospitals[:8]
+    # ── Inject KNH at the top with real calculated distance ──
+    knh = KNH_OVERRIDE.copy()
+    knh["distance_km"] = round(haversine_km(lat, lon, knh["lat"], knh["lon"]), 1)
+    knh["travel_time"] = estimate_travel_time(knh["distance_km"])
+
+    # Avoid duplicates if KNH is already in OSM results
+    hospitals = [h for h in hospitals if "kenyatta national" not in h["name"].lower()]
+
+    # Return KNH first, then up to 14 others
+    return [knh] + hospitals[:14]

@@ -14,8 +14,10 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
     # ── AI (Gemini) ──
-    GEMINI_API_KEY: str                # From Google AI Studio → Get API Key (free)
+    GEMINI_API_KEY: str = ""               # From Google AI Studio → Get API Key (free)
+    GROQ_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-1.5-flash"   # Fast free model
+    GROQ_MODEL: str = "llama-3.3-70b-versatile"
 
     # ── MPESA ──
     MPESA_CONSUMER_KEY: str = ""
@@ -40,6 +42,8 @@ class Settings(BaseSettings):
     APP_NAME: str = "CivTech Care System"
     DEBUG: bool = True
     FRONTEND_URL: str = "https://civcare-sys.vercel.app/"
+    agora_app_id: str = ""
+    agora_app_certificate: str = ""
 
     class Config:
         env_file = ".env"

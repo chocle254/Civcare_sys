@@ -110,7 +110,7 @@ export default function ActiveConsult() {
         {/* ── Patient symptoms + history ── */}
         <div className="card">
           <p className="card__title">Reason for Consultation</p>
-          <p style={{ fontSize: 14, color: 'var(--gray-600)', marginBottom: 12 }}>
+          <p style={{ fontSize: 14, color: 'var(--gray-600)', marginBottom: 12, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
             {consult?.symptoms_summary || '—'}
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
