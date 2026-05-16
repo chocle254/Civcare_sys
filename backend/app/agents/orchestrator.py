@@ -269,10 +269,21 @@ async def process_message(
         "role":  "user",
         "parts": [patient_message],
     })
-
+    past_history     = patient_data.get("past_history", [])
+    past_history_str = ""
+    if past_history:
+        lines = []
+        for h in past_history:
+            line = f"  - {h['date']}: Diagnosed with {h['diagnosis']} (severity: {h['severity']})"
+            if h["notes"]:
+                line += f" — Doctor noted: {h['notes']}"
+            lines.append(line)
+        past_history_str = "\n".join(lines)
+    else:
+        past_history_str = "  None on record"
     # ── STEP 3: Get AI response ──────────────────────────────────────────────
     dynamic_context = SYSTEM_CONTEXT + (
-        f"\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"\n\n━ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
         f"PATIENT PROFILE\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
         f"Age: {patient_data.get('age')}\n"
@@ -280,7 +291,14 @@ async def process_message(
         f"Past Conditions: {patient_data.get('conditions')}\n"
         f"Current Medications: {', '.join(patient_data.get('current_medications', [])) or 'None'}\n"
         f"Allergies: {patient_data.get('allergies')}\n"
-        f"Keep this context in mind when asking questions. Do NOT read it out loud to the patient."
+        f"IMPORTANT INSTRUCTIONS FOR PATIENT CONTEXT:\n"
+        f"- If Past Conditions or Current Medications are present, you ALREADY know this patient.\n"
+        f"- On the FIRST message of a new session, briefly acknowledge their history naturally.\n"
+        f"  Example: 'Good to have you back — I can see you've previously consulted us about {patient_data.get('conditions', 'a few things')}. What brings you in today?'\n"
+        f"- If they describe a new symptom that could relate to a past condition, gently factor it in.\n"
+        f"  Example: If they had malaria before and now have fever, probe more specifically.\n"
+        f"- NEVER recite their full medical record. Reference it naturally, like a nurse who remembers a returning patient.\n"
+        f"- If Past Conditions is 'None on record' and Current Medications is empty, treat them as a new patient."
     )
 
     ai_response = await ask_gemini_with_history(

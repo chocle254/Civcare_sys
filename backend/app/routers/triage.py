@@ -94,19 +94,31 @@ async def send_message(data: MessageInput, db: Session = Depends(get_db)):
 
     # ── Fetch previous conditions ──
     past_verdicts = db.query(Verdict).filter(
-        Verdict.patient_id == patient.id
-    ).all()
+    Verdict.patient_id == patient.id
+    ).order_by(Verdict.submitted_at.desc()).limit(5).all()
+
     diagnoses = list(set([v.diagnosis for v in past_verdicts if v.diagnosis]))
     conditions_str = ", ".join(diagnoses) if diagnoses else "None on record"
 
+    past_history = []
+    for v in past_verdicts:
+        if v.diagnosis:
+            past_history.append({
+                "diagnosis": v.diagnosis,
+                "severity":  v.severity_confirmed or "unknown",
+                "notes":     v.notes or "",
+                "date":      v.submitted_at.strftime("%B %Y") if v.submitted_at else "unknown date",
+            })
+
     # ── Build patient data for agents ──
     patient_data = {
-        "age":                 patient.age or "Unknown",
-        "location":            patient.location or "Unknown",
-        "conditions":          conditions_str,
-        "current_medications": medications,
-        "allergies":           "None on record",
-    }
+    "age":                 patient.age or "Unknown",
+    "location":            patient.location or "Unknown",
+    "conditions":          conditions_str,
+    "current_medications": medications,
+    "allergies":           patient.allergies or "None on record",
+    "past_history":        past_history,
+}
 
     # ── Get current Nairobi time ──
     nairobi_time = datetime.now(NAIROBI_TZ).strftime("%I:%M %p")
@@ -320,6 +332,15 @@ async def get_patient_sessions(patient_id: str, db: Session = Depends(get_db)):
             "started_at": s.started_at.isoformat() if s.started_at else None
         })
     return result
+
+@router.get("/messages/{session_id}")
+async def get_session_messages(session_id: str, db: Session = Depends(get_db)):
+    session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    messages = json.loads(session.messages or "[]")
+    return messages
+
 
 @router.get("/session/{session_id}")
 async def get_session(session_id: str, db: Session = Depends(get_db)):

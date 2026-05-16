@@ -74,7 +74,11 @@ async def get_nearby_hospitals(lat: float, lon: float, radius_km: int = 50):
 
     try:
         async with httpx.AsyncClient(timeout=20) as client:
-            res = await client.post(OVERPASS_URL, data={"data": query})
+            res = await client.post(
+                OVERPASS_URL,
+                data={"data": query},
+                headers={"Accept": "*/*"},
+            )
             res.raise_for_status()
             data = res.json()
     except Exception as e:

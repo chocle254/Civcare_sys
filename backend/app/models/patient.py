@@ -28,6 +28,7 @@ class Patient(Base):
     phone_number     = Column(String, unique=True, nullable=False, index=True)
     date_of_birth    = Column(String, nullable=True)
     age              = Column(String, nullable=True)
+    allergies        = Column(String, nullable=True)
     location         = Column(String, nullable=True)   # General area e.g Kisumu, Turkana
 
     # ── ENCRYPTION KEYS ──
