@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getNearbyHospitals } from '../../api/hospitals';
 import useLocation from '../../hooks/useLocation';
+import { confirmArrival } from '../../api/triage';
 
 export default function HospitalSelect() {
   const navigate = useNavigate();
@@ -35,8 +36,13 @@ export default function HospitalSelect() {
     if (sessionId) {
       try {
         const { selectHospital, createAppointment } = await import('../../api/triage');
-        await selectHospital({ session_id: sessionId, hospital_id: hospital.id });
-        const apptRes = await createAppointment({
+        await selectHospital({
+          session_id: sessionId,
+          hospital_id: hospital.id,
+          patient_id: patient.id,       // ← ADD
+          hospital_name: hospital.name,    // ← ADD
+        });
+        const apptRes = await confirmArrival({
           patient_id: patient.id,
           hospital_id: hospital.id,
           session_id: sessionId,

@@ -15,7 +15,8 @@ async def get_active_prescriptions(patient_id: str, db: Session = Depends(get_db
 
     active_prescriptions = db.query(Prescription).filter(
         Prescription.patient_id == patient_id,
-        Prescription.is_active == True
+        Prescription.is_active == True,
+        Prescription.reminders_active == True,
     ).all()
 
     result = []
