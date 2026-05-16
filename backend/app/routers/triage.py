@@ -223,6 +223,15 @@ async def confirm_arrival(data: ArrivalConfirm, db: Session = Depends(get_db)):
     This creates the appointment, finds an available doctor, and sets status to ARRIVED.
     This triggers the live queue update on the doctor's dashboard.
     """
+    existing = db.query(Appointment).filter(
+        Appointment.session_id == data.session_id
+    ).first()
+    if existing:
+        return {
+            "message":        "Arrival already confirmed.",
+            "appointment_id": existing.id,
+            "doctor_assigned": None,
+        }
     # Pull triage data from the session to attach to the appointment
     session = db.query(ChatSession).filter(ChatSession.id == data.session_id).first()
 
@@ -301,6 +310,25 @@ async def call_patient(data: CallPatient, db: Session = Depends(get_db)):
 
     return {"message": f"Patient {patient.full_name} has been notified."}
 
+@router.get("/appointment-status/{appointment_id}")
+async def get_appointment_status(appointment_id: str, db: Session = Depends(get_db)):
+    appointment = db.query(Appointment).filter(
+        Appointment.id == appointment_id
+    ).first()
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    doctor = None
+    if appointment.doctor_id:
+        doctor = db.query(Doctor).filter(Doctor.id == appointment.doctor_id).first()
+
+    return {
+        "status":      appointment.status.value if hasattr(appointment.status, "value") else appointment.status,
+        "doctor_name": doctor.full_name if doctor else None,
+        "room":        "Room 3A",
+    }
+
+
 
 @router.get("/sessions/{patient_id}")
 async def get_patient_sessions(patient_id: str, db: Session = Depends(get_db)):
@@ -340,6 +368,24 @@ async def get_session_messages(session_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Session not found")
     messages = json.loads(session.messages or "[]")
     return messages
+
+@router.get("/appointment-status/{appointment_id}")
+async def get_appointment_status(appointment_id: str, db: Session = Depends(get_db)):
+    appointment = db.query(Appointment).filter(
+        Appointment.id == appointment_id
+    ).first()
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    doctor = None
+    if appointment.doctor_id:
+        doctor = db.query(Doctor).filter(Doctor.id == appointment.doctor_id).first()
+
+    return {
+        "status":      appointment.status.value if hasattr(appointment.status, "value") else appointment.status,
+        "doctor_name": doctor.full_name if doctor else None,
+        "room":        "Room 3A",  # hardcoded for now
+    }
 
 
 @router.get("/session/{session_id}")

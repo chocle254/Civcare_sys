@@ -3,11 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import client from '../../api/client';
 
 export default function Medications() {
-  const navigate  = useNavigate();
-  const patient   = JSON.parse(localStorage.getItem('civtech_patient') || '{}');
-  const [meds,    setMeds]    = useState([]);
+  const navigate = useNavigate();
+  const patient = JSON.parse(localStorage.getItem('civtech_patient') || '{}');
+  const [meds, setMeds] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [saving,  setSaving]  = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -35,7 +35,7 @@ export default function Medications() {
         prescription_id: med.id,
         dosage_notation: med.dosageInput,
         first_dose_time: med.firstDose,
-        patient_id:      patient.id,
+        patient_id: patient.id,
       });
       setMeds((prev) => prev.map((m) => m.id === med.id
         ? { ...m, reminders_active: true, editing: false }
@@ -121,6 +121,7 @@ export default function Medications() {
                     className="input"
                     value={med.dosageInput}
                     onChange={(e) => handleChange(med.id, 'dosageInput', e.target.value)}
+                    style={{ appearance: 'none', WebkitAppearance: 'none', cursor: 'pointer' }}
                   >
                     <option value="">Select dosage</option>
                     <option value="1x1">1 tablet once a day</option>

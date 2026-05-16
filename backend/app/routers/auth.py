@@ -33,6 +33,7 @@ class PatientRegister(BaseModel):
     identity_type:   str   # national_id / birth_cert / chf_number
     date_of_birth:   str | None = None
     location:        str | None = None
+    allergies:       str | None = None
 
 
 class PatientLogin(BaseModel):
@@ -78,6 +79,7 @@ async def register_patient(data: PatientRegister, db: Session = Depends(get_db))
         identity_type=IdentityType(data.identity_type),
         date_of_birth=data.date_of_birth,
         location=data.location,
+        allergies=data.allergies,
         key_one_hash=key_one_hash,
         is_verified=True,   # No OTP for now — verified on registration
     )
@@ -94,6 +96,7 @@ async def register_patient(data: PatientRegister, db: Session = Depends(get_db))
             "name":     patient.full_name,
             "phone":    patient.phone_number,
             "location": patient.location,
+            "allergies": patient.allergies,
         }
     }
 
@@ -125,6 +128,7 @@ async def login_patient(data: PatientLogin, db: Session = Depends(get_db)):
             "name":     patient.full_name,
             "phone":    patient.phone_number,
             "location": patient.location,
+            "allergies": patient.allergies,
         }
     }
 
@@ -270,4 +274,30 @@ async def login_doctor(data: DoctorLogin, db: Session = Depends(get_db)):
             "consultation_fee": doctor.consultation_fee,
             "status":           doctor.status,
         }
+    }
+
+
+# ════════════════════════════════
+# PATIENT PROFILE UPDATE
+# ════════════════════════════════
+
+class UpdateProfile(BaseModel):
+    patient_id: str
+    allergies:  str | None = None
+    location:   str | None = None
+
+@router.patch("/patient/profile/update")
+async def update_profile(data: UpdateProfile, db: Session = Depends(get_db)):
+    patient = db.query(Patient).filter(Patient.id == data.patient_id).first()
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    if data.allergies is not None:
+        patient.allergies = data.allergies
+    if data.location is not None:
+        patient.location = data.location
+    db.commit()
+    return {
+        "message":   "Profile updated successfully",
+        "allergies": patient.allergies,
+        "location":  patient.location,
     }

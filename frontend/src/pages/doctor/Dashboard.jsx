@@ -7,51 +7,51 @@ import client from "../../api/client";
 
 // ─── Theme ───────────────────────────────────────────────
 const T = {
-  bg:          "#0b0b0e",
-  surface:     "#111116",
-  card:        "#15151c",
-  cardHi:      "#1c1c26",
-  border:      "rgba(255,255,255,0.07)",
-  borderHi:    "rgba(255,255,255,0.13)",
-  text:        "#dcdcee",
-  muted:       "#6c6c9a",
-  dim:         "#383858",
-  accent:      "#00d4aa",
-  accentBg:    "rgba(0,212,170,0.1)",
-  accentBd:    "rgba(0,212,170,0.25)",
-  red:         "#ff3d5a",
-  redBg:       "rgba(255,61,90,0.1)",
-  redBd:       "rgba(255,61,90,0.25)",
-  amber:       "#ffaa22",
-  amberBg:     "rgba(255,170,34,0.1)",
-  amberBd:     "rgba(255,170,34,0.25)",
-  green:       "#00cc88",
-  greenBg:     "rgba(0,204,136,0.1)",
-  greenBd:     "rgba(0,204,136,0.25)",
-  blue:        "#4d8fff",
-  blueBg:      "rgba(77,143,255,0.1)",
-  blueBd:      "rgba(77,143,255,0.25)",
+  bg: "#0b0b0e",
+  surface: "#111116",
+  card: "#15151c",
+  cardHi: "#1c1c26",
+  border: "rgba(255,255,255,0.07)",
+  borderHi: "rgba(255,255,255,0.13)",
+  text: "#dcdcee",
+  muted: "#6c6c9a",
+  dim: "#383858",
+  accent: "#00d4aa",
+  accentBg: "rgba(0,212,170,0.1)",
+  accentBd: "rgba(0,212,170,0.25)",
+  red: "#ff3d5a",
+  redBg: "rgba(255,61,90,0.1)",
+  redBd: "rgba(255,61,90,0.25)",
+  amber: "#ffaa22",
+  amberBg: "rgba(255,170,34,0.1)",
+  amberBd: "rgba(255,170,34,0.25)",
+  green: "#00cc88",
+  greenBg: "rgba(0,204,136,0.1)",
+  greenBd: "rgba(0,204,136,0.25)",
+  blue: "#4d8fff",
+  blueBg: "rgba(77,143,255,0.1)",
+  blueBd: "rgba(77,143,255,0.25)",
 };
 
 const RISK = {
-  critical: { color: T.red,   bg: T.redBg,   bd: T.redBd,   label: "Critical" },
+  critical: { color: T.red, bg: T.redBg, bd: T.redBd, label: "Critical" },
   moderate: { color: T.amber, bg: T.amberBg, bd: T.amberBd, label: "Moderate" },
-  low:      { color: T.green, bg: T.greenBg, bd: T.greenBd, label: "Low"      },
+  low: { color: T.green, bg: T.greenBg, bd: T.greenBd, label: "Low" },
 };
 
 const STATUS_CFG = {
-  available:   { color: T.green, bg: T.greenBg, bd: T.greenBd, label: "Available"  },
-  on_break:    { color: T.amber, bg: T.amberBg, bd: T.amberBd, label: "On Break"   },
-  offline:     { color: T.red,   bg: T.redBg,   bd: T.redBd,   label: "Offline"    },
-  with_patient:{ color: T.blue,  bg: T.blueBg,  bd: T.blueBd,  label: "With Patient"},
+  available: { color: T.green, bg: T.greenBg, bd: T.greenBd, label: "Available" },
+  on_break: { color: T.amber, bg: T.amberBg, bd: T.amberBd, label: "On Break" },
+  offline: { color: T.red, bg: T.redBg, bd: T.redBd, label: "Offline" },
+  with_patient: { color: T.blue, bg: T.blueBg, bd: T.blueBd, label: "With Patient" },
 };
 
 function timeSince(date) {
   const m = Math.floor((Date.now() - new Date(date)) / 60000);
-  if (m < 1)  return "Just now";
+  if (m < 1) return "Just now";
   if (m < 60) return `${m}m ago`;
   const h = Math.floor(m / 60);
-  return h < 24 ? `${h}h ${m % 60}m` : `${Math.floor(h/24)}d`;
+  return h < 24 ? `${h}h ${m % 60}m` : `${Math.floor(h / 24)}d`;
 }
 
 // ─── CSS (injected once) ──────────────────────────────────
@@ -248,9 +248,9 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const doctor = JSON.parse(localStorage.getItem("civtech_doctor") || "{}");
 
-  const [view,    setView]    = useState("queue");
-  const [queue,   setQueue]   = useState([]);
-  const [status,  setStatus]  = useState(doctor.status || "available");
+  const [view, setView] = useState("queue");
+  const [queue, setQueue] = useState([]);
+  const [status, setStatus] = useState(doctor.status || "available");
   const [calling, setCalling] = useState(null);
   const [loading, setLoading] = useState(true);
   const [consults, setConsults] = useState([]);
@@ -271,7 +271,7 @@ export default function Dashboard() {
   }, [doctor.hospital_id, doctor.id]);
 
   useEffect(() => { loadQueue(); }, [loadQueue]);
-  
+
   const loadConsults = useCallback(async () => {
     setConsultsLoading(true);
     try {
@@ -287,7 +287,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (view === "consults") loadConsults();
   }, [view, loadConsults]);
-  
+
 
   // ── WebSocket ──
   useWebSocket(doctor.hospital_id, (data) => {
@@ -296,7 +296,7 @@ export default function Dashboard() {
 
   // ── Ping ──
   useEffect(() => {
-    const t = setInterval(() => pingDoctor(doctor.id).catch(() => {}), 5 * 60 * 1000);
+    const t = setInterval(() => pingDoctor(doctor.id).catch(() => { }), 5 * 60 * 1000);
     return () => clearInterval(t);
   }, [doctor.id]);
 
@@ -308,9 +308,9 @@ export default function Dashboard() {
       localStorage.setItem("civtech_doctor", JSON.stringify({ ...doctor, status: newStatus }));
       if (newStatus === "on_break" || newStatus === "offline") {
         await redirectPatients({
-          doctor_id:   doctor.id,
+          doctor_id: doctor.id,
           hospital_id: doctor.hospital_id,
-          reason:      newStatus === "on_break" ? "break" : "shift_end",
+          reason: newStatus === "on_break" ? "break" : "shift_end",
         });
         await loadQueue();
       }
@@ -324,7 +324,7 @@ export default function Dashboard() {
     setCalling(appt.id);
     try {
       await callPatient({ appointment_id: appt.id, doctor_id: doctor.id });
-      setQueue((prev) => prev.map((a) => a.id === appt.id ? { ...a, status: "called" } : a));
+      await loadQueue(); // ← refreshes queue AND triggers WebSocket broadcast to all doctors
     } catch {
       alert("Could not notify patient. Please try again.");
     } finally {
@@ -339,7 +339,7 @@ export default function Dashboard() {
 
   const critical = queue.filter((a) => a.risk_score === "critical").length;
   const moderate = queue.filter((a) => a.risk_score === "moderate").length;
-  const sCfg     = STATUS_CFG[status] || STATUS_CFG.available;
+  const sCfg = STATUS_CFG[status] || STATUS_CFG.available;
   const doctorName = doctor.full_name || doctor.name || "Doctor";
   const initials = doctorName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 
@@ -362,14 +362,14 @@ export default function Dashboard() {
             <p className="ct-section-label">WORKSPACE</p>
             <button className={`ct-nav-btn ${view === "queue" ? "active" : ""}`} onClick={() => setView("queue")}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
               </svg>
               Patient Queue
               {queue.length > 0 && (
                 <span className="ct-badge" style={{
                   background: view === "queue" ? T.accent : T.dim,
-                  color:      view === "queue" ? T.bg      : T.muted,
+                  color: view === "queue" ? T.bg : T.muted,
                 }}>
                   {queue.length}
                 </span>
@@ -377,7 +377,7 @@ export default function Dashboard() {
             </button>
             <button className={`ct-nav-btn ${view === "consults" ? "active" : ""}`} onClick={() => setView("consults")}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                <polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
               </svg>
               Consultations
             </button>
@@ -400,15 +400,15 @@ export default function Dashboard() {
             {/* Status switcher */}
             <p className="ct-section-label" style={{ marginBottom: 8 }}>STATUS</p>
             {[
-              { id: "available",  color: T.green, bg: T.greenBg, bd: T.greenBd, label: "Available"  },
-              { id: "on_break",   color: T.amber, bg: T.amberBg, bd: T.amberBd, label: "On Break"   },
-              { id: "offline",    color: T.red,   bg: T.redBg,   bd: T.redBd,   label: "Offline"    },
+              { id: "available", color: T.green, bg: T.greenBg, bd: T.greenBd, label: "Available" },
+              { id: "on_break", color: T.amber, bg: T.amberBg, bd: T.amberBd, label: "On Break" },
+              { id: "offline", color: T.red, bg: T.redBg, bd: T.redBd, label: "Offline" },
             ].map((s) => (
               <button key={s.id} className="ct-status-pill" onClick={() => handleStatusChange(s.id)}
                 style={{
-                  background:   status === s.id ? s.bg  : "transparent",
-                  color:        status === s.id ? s.color : T.dim,
-                  borderColor:  status === s.id ? s.bd  : T.border,
+                  background: status === s.id ? s.bg : "transparent",
+                  color: status === s.id ? s.color : T.dim,
+                  borderColor: status === s.id ? s.bd : T.border,
                 }}>
                 <span className="dot" style={{ background: s.color, opacity: status === s.id ? 1 : 0.35 }} />
                 {s.label}
@@ -418,8 +418,8 @@ export default function Dashboard() {
             <button className="ct-nav-btn danger" style={{ marginTop: 6 }}
               onClick={() => { localStorage.clear(); navigate("/doctor"); }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
               </svg>
               Logout
             </button>
@@ -444,8 +444,8 @@ export default function Dashboard() {
                 {new Date().toLocaleDateString("en-KE", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
               </div>
               <div className="ct-status-chip" style={{
-                background:  sCfg.bg,
-                color:       sCfg.color,
+                background: sCfg.bg,
+                color: sCfg.color,
                 borderColor: sCfg.bd,
               }}>
                 <span style={{ width: 6, height: 6, borderRadius: "50%", background: sCfg.color }} />
@@ -460,10 +460,10 @@ export default function Dashboard() {
             {/* ── Stat cards ── */}
             <div className="ct-stats">
               {[
-                { label: "IN QUEUE",     value: queue.length, sub: "patients waiting",    color: T.accent, bg: T.accentBg },
-                { label: "CRITICAL",     value: critical,     sub: "need attention now",  color: T.red,    bg: T.redBg   },
-                { label: "MODERATE",     value: moderate,     sub: "monitoring needed",   color: T.amber,  bg: T.amberBg },
-                { label: "MY STATUS",    value: sCfg.label,   sub: "current availability",color: sCfg.color,bg: sCfg.bg  },
+                { label: "IN QUEUE", value: queue.length, sub: "patients waiting", color: T.accent, bg: T.accentBg },
+                { label: "CRITICAL", value: critical, sub: "need attention now", color: T.red, bg: T.redBg },
+                { label: "MODERATE", value: moderate, sub: "monitoring needed", color: T.amber, bg: T.amberBg },
+                { label: "MY STATUS", value: sCfg.label, sub: "current availability", color: sCfg.color, bg: sCfg.bg },
               ].map(({ label, value, sub, color, bg }) => (
                 <div key={label} className="ct-stat-card" style={{ borderTopColor: color }}>
                   <div className="ct-stat-label">{label}</div>
@@ -510,7 +510,7 @@ export default function Dashboard() {
                         {sortedQueue.map((appt, idx) => {
                           const r = RISK[appt.risk_score] || RISK.moderate;
                           const isCalling = calling === appt.id;
-                          const called    = appt.status === "called";
+                          const called = appt.status === "called";
                           return (
                             <tr key={appt.id} className="data-row"
                               style={{ borderLeft: `3px solid ${r.color}` }}
@@ -588,8 +588,8 @@ export default function Dashboard() {
                               {appt.ai_assessment
                                 ? ` — ${appt.ai_assessment.slice(0, 90)}${appt.ai_assessment.length > 90 ? "..." : ""}`
                                 : appt.symptoms_summary
-                                ? ` — ${appt.symptoms_summary.slice(0, 90)}`
-                                : ""}
+                                  ? ` — ${appt.symptoms_summary.slice(0, 90)}`
+                                  : ""}
                             </p>
                           </div>
                         );
@@ -607,10 +607,10 @@ export default function Dashboard() {
                     <div className="ct-panel-header">Queue Summary</div>
                     <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
                       {[
-                        { label: "Critical",        value: queue.filter(a => a.risk_score === "critical").length, color: T.red   },
-                        { label: "Moderate",        value: queue.filter(a => a.risk_score === "moderate").length, color: T.amber },
-                        { label: "Low Risk",        value: queue.filter(a => a.risk_score === "low").length,      color: T.green },
-                        { label: "Called / Ready",  value: queue.filter(a => a.status === "called").length,       color: T.blue  },
+                        { label: "Critical", value: queue.filter(a => a.risk_score === "critical").length, color: T.red },
+                        { label: "Moderate", value: queue.filter(a => a.risk_score === "moderate").length, color: T.amber },
+                        { label: "Low Risk", value: queue.filter(a => a.risk_score === "low").length, color: T.green },
+                        { label: "Called / Ready", value: queue.filter(a => a.status === "called").length, color: T.blue },
                       ].map(({ label, value, color }) => (
                         <div key={label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 7 }}>

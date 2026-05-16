@@ -3,23 +3,24 @@ import { useNavigate } from 'react-router-dom';
 import { registerPatient, loginPatient } from '../../api/auth';
 
 export default function Register() {
-  const navigate  = useNavigate();
-  const [mode,    setMode]    = useState('login');   // 'login' or 'register'
+  const navigate = useNavigate();
+  const [mode, setMode] = useState('login');   // 'login' or 'register'
   const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState('');
+  const [error, setError] = useState('');
 
   const [loginForm, setLoginForm] = useState({
-    phone_number:    '',
+    phone_number: '',
     identity_number: '',
   });
 
   const [regForm, setRegForm] = useState({
-    full_name:       '',
-    phone_number:    '',
+    full_name: '',
+    phone_number: '',
     identity_number: '',
-    identity_type:   'national_id',
-    date_of_birth:   '',
-    location:        '',
+    identity_type: 'national_id',
+    date_of_birth: '',
+    location: '',
+    allergies: '',
   });
 
   const handleLoginChange = (e) =>
@@ -29,7 +30,7 @@ export default function Register() {
     setRegForm({ ...regForm, [e.target.name]: e.target.value });
 
   const saveAndNavigate = (data) => {
-    localStorage.setItem('civtech_token',   data.access_token);
+    localStorage.setItem('civtech_token', data.access_token);
     localStorage.setItem('civtech_patient', JSON.stringify(data.patient));
     navigate('/dashboard');
   };
@@ -81,28 +82,28 @@ export default function Register() {
         <div style={{ marginTop: 28, marginBottom: 20 }}>
           {/* ── Mode Toggle ── */}
           <div style={{
-            display:       'flex',
-            background:    'var(--gray-200)',
-            borderRadius:  'var(--radius)',
-            padding:       4,
-            marginBottom:  24,
+            display: 'flex',
+            background: 'var(--gray-200)',
+            borderRadius: 'var(--radius)',
+            padding: 4,
+            marginBottom: 24,
           }}>
             {['login', 'register'].map((m) => (
               <button
                 key={m}
                 onClick={() => { setMode(m); setError(''); }}
                 style={{
-                  flex:         1,
-                  padding:      '10px 0',
-                  border:       'none',
+                  flex: 1,
+                  padding: '10px 0',
+                  border: 'none',
                   borderRadius: 6,
-                  fontWeight:   600,
-                  fontSize:     14,
-                  cursor:       'pointer',
-                  background:   mode === m ? 'var(--white)' : 'transparent',
-                  color:        mode === m ? 'var(--blue)'  : 'var(--gray-600)',
-                  boxShadow:    mode === m ? 'var(--shadow)': 'none',
-                  transition:   'all 0.15s',
+                  fontWeight: 600,
+                  fontSize: 14,
+                  cursor: 'pointer',
+                  background: mode === m ? 'var(--white)' : 'transparent',
+                  color: mode === m ? 'var(--blue)' : 'var(--gray-600)',
+                  boxShadow: mode === m ? 'var(--shadow)' : 'none',
+                  transition: 'all 0.15s',
                 }}
               >
                 {m === 'login' ? 'Login' : 'Register'}
@@ -229,6 +230,17 @@ export default function Register() {
                   name="location"
                   placeholder="e.g. Kisumu, Turkana"
                   value={regForm.location}
+                  onChange={handleRegChange}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="label">Known Allergies</label>
+                <input
+                  className="input"
+                  name="allergies"
+                  placeholder="e.g. Penicillin, Sulfa drugs (leave blank if none)"
+                  value={regForm.allergies}
                   onChange={handleRegChange}
                 />
               </div>

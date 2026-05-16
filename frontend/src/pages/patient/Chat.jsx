@@ -10,9 +10,10 @@ export default function Chat() {
 
   const mode = location.state?.mode || null;
 
+  const existingSessionId = localStorage.getItem('civtech_session_id');
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
-  const [sessionId, setSessionId] = useState(null);
+  const [sessionId, setSessionId] = useState(existingSessionId || null);
   const [isTyping, setIsTyping] = useState(false);
   const [disabled, setDisabled] = useState(false);
   const [coords, setCoords] = useState(null);
@@ -29,17 +30,35 @@ export default function Chat() {
 
   // ── Opening message ──
   useEffect(() => {
-    localStorage.removeItem('civtech_session_id');
-    let welcomeMsg = `Hello ${patient.name?.split(' ')[0] || 'there'}. I am CivTech, your health assistant. How are you feeling today?`;
-    if (mode === 'pre_hospital') {
-      const h = JSON.parse(localStorage.getItem('civtech_hospital') || '{}');
-      welcomeMsg = `You've selected ${h.name}. To prepare your file for the doctor, please describe the symptoms you are experiencing.`;
-    } else if (mode === 'pre_consultation') {
-      const d = JSON.parse(localStorage.getItem('civtech_selected_doctor') || '{}');
-      welcomeMsg = `You're about to consult Dr. ${d.full_name || d.name}. Please describe your symptoms to speed up the consultation.`;
+    const resumeId = localStorage.getItem('civtech_session_id');
+
+    if (resumeId) {
+      setSessionId(resumeId);
+      import('axios').then(({ default: axios }) => {
+        axios.get(`${process.env.REACT_APP_API_URL}/triage/messages/${resumeId}`)
+          .then(res => {
+            const history = (res.data || []).map(m => ({
+              role: m.role,
+              content: m.content,
+            }));
+            setMessages(history.length ? history : [{ role: 'ai', content: 'Session resumed. How can I help?' }]);
+          })
+          .catch(() => {
+            setMessages([{ role: 'ai', content: 'Could not load previous messages.' }]);
+          });
+      });
+    } else {
+      let welcomeMsg = `Hello ${patient.name?.split(' ')[0] || 'there'}. I am CivTech, your health assistant. How are you feeling today?`;
+      if (mode === 'pre_hospital') {
+        const h = JSON.parse(localStorage.getItem('civtech_hospital') || '{}');
+        welcomeMsg = `You've selected ${h.name}. To prepare your file for the doctor, please describe the symptoms you are experiencing.`;
+      } else if (mode === 'pre_consultation') {
+        const d = JSON.parse(localStorage.getItem('civtech_selected_doctor') || '{}');
+        welcomeMsg = `You're about to consult Dr. ${d.full_name || d.name}. Please describe your symptoms to speed up the consultation.`;
+      }
+      setMessages([{ role: 'ai', content: welcomeMsg }]);
     }
-    setMessages([{ role: 'ai', content: welcomeMsg }]);
-  }, [patient.name]);
+  }, [location.key]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });

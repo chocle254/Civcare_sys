@@ -124,6 +124,32 @@ async def get_pending_consultations(doctor_id: str, db: Session = Depends(get_db
 
     return result
 
+@router.get("/status/{consultation_id}")
+async def get_consultation_status(consultation_id: str, db: Session = Depends(get_db)):
+    consult = db.query(Consultation).filter(
+        Consultation.id == consultation_id
+    ).first()
+    if not consult:
+        raise HTTPException(status_code=404, detail="Consultation not found")
+    return {"status": consult.status}
+
+
+class MarkCalled(BaseModel):
+    consultation_id: str
+
+@router.post("/mark-called")
+async def mark_consultation_called(data: MarkCalled, db: Session = Depends(get_db)):
+    consult = db.query(Consultation).filter(
+        Consultation.id == data.consultation_id
+    ).first()
+    if not consult:
+        raise HTTPException(status_code=404, detail="Not found")
+    consult.status = "called"
+    db.commit()
+    return {"message": "Marked as called"}
+
+
+
 @router.get("/{consultation_id}")
 async def get_consultation(consultation_id: str, db: Session = Depends(get_db)):
     """Doctor views consultation details during active call."""
@@ -134,6 +160,7 @@ async def get_consultation(consultation_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Consultation not found.")
 
     patient = db.query(Patient).filter(Patient.id == consult.patient_id).first()
+
 
     # Pull symptoms and AI assessment from triage session if available
     symptoms = "Direct consultation request"

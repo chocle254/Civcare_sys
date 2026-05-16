@@ -137,3 +137,20 @@ async def get_nearby_hospitals(lat: float, lon: float, radius_km: int = 50):
 
     # Return KNH first, then up to 14 others
     return [knh] + hospitals[:14]
+
+
+@router.get("/registered")
+async def get_registered_hospitals(db=None):
+    """
+    Returns hospitals registered in the CivTech database.
+    Used by doctors during registration to select their hospital from a real list.
+    """
+    from app.database import SessionLocal
+    from app.models.hospital import Hospital
+
+    db = SessionLocal()
+    try:
+        hospitals = db.query(Hospital).filter(Hospital.is_active == True).all()
+        return [{"id": h.id, "name": h.name} for h in hospitals]
+    finally:
+        db.close()
