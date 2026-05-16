@@ -35,6 +35,7 @@ export default function HospitalSelect() {
 
     if (sessionId) {
       try {
+        // eslint-disable-next-line no-unused-vars
         const { selectHospital, createAppointment } = await import('../../api/triage');
         await selectHospital({
           session_id: sessionId,

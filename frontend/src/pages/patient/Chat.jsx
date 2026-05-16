@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { sendMessage, selectHospital, createAppointment } from '../../api/triage';
+import { sendMessage } from '../../api/triage';
 
 export default function Chat() {
   const navigate = useNavigate();
@@ -58,7 +58,7 @@ export default function Chat() {
       }
       setMessages([{ role: 'ai', content: welcomeMsg }]);
     }
-  }, [location.key]);
+  }, [location.key, mode, patient.name]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
