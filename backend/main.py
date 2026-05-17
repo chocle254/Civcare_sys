@@ -99,7 +99,7 @@ async def websocket_queue(websocket: WebSocket, hospital_id: str):
         while True:
             # Keep connection alive — actual updates pushed via broadcast_queue_update()
             await websocket.receive_text()
-    except WebSocketDisconnect:
+    except Exception:
         disconnect(websocket, hospital_id)
 
 

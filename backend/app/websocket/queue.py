@@ -15,9 +15,12 @@ async def connect(websocket: WebSocket, hospital_id: str):
     print(f"Doctor connected to hospital queue: {hospital_id}")
 
 
-def disconnect(websocket: WebSocket, hospital_id: str):
+def disconnect(websocket, hospital_id):
     if hospital_id in active_connections:
-        active_connections[hospital_id].remove(websocket)
+        try:
+            active_connections[hospital_id].remove(websocket)
+        except ValueError:
+            pass
     print(f"Doctor disconnected from hospital queue: {hospital_id}")
 
 
@@ -44,4 +47,7 @@ async def broadcast_queue_update(hospital_id: str, queue_data: list):
 
     # Clean up dead connections
     for dead in dead_connections:
-        active_connections[hospital_id].remove(dead)
+        try:
+            active_connections[hospital_id].remove(dead)
+        except ValueError:
+            pass

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 export default function ArrivalWaiting() {
     const navigate = useNavigate();
     const patient = JSON.parse(localStorage.getItem('civtech_patient') || '{}');
+    console.log('PATIENT IN WAITING:', patient);
     const appointmentId = localStorage.getItem('civtech_appointment_id');
     const [callStatus, setCallStatus] = useState(null); // null | { doctor_name, room }
 
