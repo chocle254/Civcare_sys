@@ -50,6 +50,22 @@ async def preflight_handler(rest_of_path: str, request: Request):
         }
     )
 
+# ── REGISTER ROUTERS ──
+app.include_router(auth.router,          prefix="/auth",         tags=["Authentication"])
+app.include_router(triage.router,        prefix="/triage",       tags=["Triage"])
+app.include_router(hospitals.router,     prefix="/hospitals",    tags=["Hospitals"])
+app.include_router(doctors.router,       prefix="/doctors",      tags=["Doctors"])
+app.include_router(records.router,       prefix="/records",      tags=["Records"])
+app.include_router(medscan.router,       prefix="/medscan",      tags=["MedScan"])
+app.include_router(consultation.router,  prefix="/consultation", tags=["Consultation"])
+app.include_router(payment.router,       prefix="/payment",      tags=["Payment"])
+app.include_router(reminders.router,     prefix="/reminders",    tags=["Reminders"])
+app.include_router(verdict.router,       prefix="/verdict",      tags=["Verdict"])
+app.include_router(ussd.router,          prefix="/ussd",         tags=["USSD"])
+app.include_router(sms.router,           prefix="/sms",          tags=["SMS"])
+app.include_router(prescriptions.router, prefix="/prescriptions",tags=["Prescriptions"])
+
+
 # ── STARTUP ──
 @app.on_event("startup")
 async def startup():
@@ -190,17 +206,3 @@ async def get_appointment(appointment_id: str, doctor_id: str):
         db.close()
 
 
-# ── REGISTER ROUTERS ──
-app.include_router(auth.router,          prefix="/auth",         tags=["Authentication"])
-app.include_router(triage.router,        prefix="/triage",       tags=["Triage"])
-app.include_router(hospitals.router,     prefix="/hospitals",    tags=["Hospitals"])
-app.include_router(doctors.router,       prefix="/doctors",      tags=["Doctors"])
-app.include_router(records.router,       prefix="/records",      tags=["Records"])
-app.include_router(medscan.router,       prefix="/medscan",      tags=["MedScan"])
-app.include_router(consultation.router,  prefix="/consultation", tags=["Consultation"])
-app.include_router(payment.router,       prefix="/payment",      tags=["Payment"])
-app.include_router(reminders.router,     prefix="/reminders",    tags=["Reminders"])
-app.include_router(verdict.router,       prefix="/verdict",      tags=["Verdict"])
-app.include_router(ussd.router,          prefix="/ussd",         tags=["USSD"])
-app.include_router(sms.router,           prefix="/sms",          tags=["SMS"])
-app.include_router(prescriptions.router, prefix="/prescriptions",tags=["Prescriptions"])

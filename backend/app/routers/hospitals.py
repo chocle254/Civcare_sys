@@ -77,7 +77,10 @@ async def get_nearby_hospitals(lat: float, lon: float, radius_km: int = 50):
             res = await client.post(
                 OVERPASS_URL,
                 data={"data": query},
-                headers={"Accept": "*/*"},
+                headers={
+                    "Accept": "*/*",
+                    "User-Agent": "CivTechCare/1.0 (healthcare app; contact@civtech.care)",
+                },
             )
             res.raise_for_status()
             data = res.json()
